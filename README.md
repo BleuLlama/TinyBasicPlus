@@ -29,6 +29,10 @@ PS2 input devices and LCD output devices.
     - LCD Panel for standalone use
 
 
+# Known Quirks and Limitations
+    - If LOAD or SAVE are called, FILES fails subsequent listings
+    - SD cards are not hot-swappable. A reset is required between swaps.
+
 # Authors
 
     - Tiny Basic 68k - Gordon Brandly [Project Page](http://members.shaw.ca/gbrandly/68ktinyb.html)
