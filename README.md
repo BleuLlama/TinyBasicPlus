@@ -1,5 +1,5 @@
 TinyBasic Plus
-=========-====
+==============
 
 A C implementation of Tiny Basic, with a focus on support for
 Arduino.  It was originally written by Gordon Brandly in the form
@@ -44,7 +44,7 @@ PS2 input devices and LCD output devices.
 - Arduino Basic / Tiny Basic C - Michael Field [Project Page](http://ec2-122-248-210-243.ap-southeast-1.compute.amazonaws.com/mediawiki/index.php/Arduino_Basic)
 - Tiny Basic Plus - Scott Lawrence <yorgle@gmail.com> [Github Page](http://github.com/BleuLlama/TinyBasicPlus]
 
-- Jürg Wullschleger - Fix for unary operations and whitespace in expressions
+- Jï¿½rg Wullschleger - Fix for unary operations and whitespace in expressions
 
 # Links
 - [Arduino Microcontroller](http://arduino.cc)
