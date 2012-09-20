@@ -7,6 +7,9 @@
 //
 
 
+// v0.04: 2012-09-20
+// 	Updated for building desktop command line app
+//
 // v0.03: 2012-09-19
 //	Integrated Jürg Wullschleger's whitespace,unary fix
 //	Now available through github
@@ -31,6 +34,11 @@
 char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 #define ARDUINO 1
+
+// hack to let makefiles work with this file unchanged
+#ifdef FORCE_DESKTOP
+#undef ARDUINO
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Feature configuration...
@@ -68,6 +76,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 #else
   // Not arduino setup
+  #include <stdio.h>
 
   // size of our program ram
   #define kRamSize   4096
@@ -78,6 +87,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 // ASCII Characters
 #define CR	'\r'
 #define NL	'\n'
+#define LF      0x0a
 #define TAB	'\t'
 #define BELL	'\b'
 #define SPACE   ' '
@@ -222,7 +232,7 @@ static const unsigned char okmsg[]            = "OK";
 static const unsigned char whatmsg[]          = "What? ";
 static const unsigned char howmsg[]           =	"How?";
 static const unsigned char sorrymsg[]         = "Sorry!";
-static const unsigned char initmsg[]          = "TinyBasic Plus V0.03";
+static const unsigned char initmsg[]          = "TinyBasic Plus V0.04";
 static const unsigned char memorymsg[]        = " bytes free.";
 static const unsigned char breakmsg[]         = "break!";
 static const unsigned char unimplimentedmsg[] = "Unimplemented";
@@ -1395,9 +1405,11 @@ static unsigned char breakcheck(void)
     return Serial.read() == CTRLC;
   return 0;
 #else
+#ifdef __CONIO__
   if(kbhit())
     return getch() == CTRLC;
    else
+#endif
      return 0;
 #endif
 }
@@ -1405,6 +1417,7 @@ static unsigned char breakcheck(void)
 static int inchar()
 {
 #if ARDUINO
+  // 1. FILE INPUT
 #if ENABLE_FILEIO
   if( inFromFile ) {
     // get content from a file until it's empty
@@ -1417,6 +1430,7 @@ static int inchar()
     return v;    
   } else {
 #endif
+    // 2. SERIAL INPUT
     while(1)
     {
       if(Serial.available())
@@ -1426,7 +1440,13 @@ static int inchar()
   }
 #endif
 #else
-	return getchar();
+	// 3. CONSOLE INPUT
+	int got = getchar();
+
+	// translation for desktop systems
+	if( got == LF ) got = CR;
+
+	return got;
 #endif
 }
 
