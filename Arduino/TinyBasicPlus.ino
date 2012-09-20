@@ -1,26 +1,38 @@
-// TinyBASIC.cpp : Defines the entry point for the console application.
-// Author: Mike Field <hamster@snap.net.nz>
+////////////////////////////////////////////////////////////////////////////////
+// TinyBasic Plus
+////////////////////////////////////////////////////////////////////////////////
+//
+// Authors: Mike Field <hamster@snap.net.nz>
+//	    Scott Lawrence <yorgle@gmail.com>
 //
 
 
+// v0.03: 2012-09-19
+//	Integrated Jürg Wullschleger's whitespace,unary fix
+//	Now available through github
+//	Project renamed from "Tiny Basic in C" to "TinyBasic Plus"
+//	   
 // v0.02b: 2012-09-17  Scott Lawrence <yorgle@gmail.com>
-//         Better FILES listings
+// 	Better FILES listings
 //
 // v0.02a: 2012-09-17  Scott Lawrence <yorgle@gmail.com>
-//         Support for SD Library
-//         Added: SAVE, FILES (mostly works), LOAD (mostly works) (redirects IO)
-//         Added: MEM, ? (PRINT)
-//         Quirk:  "10 LET A=B+C" is ok "10 LET A = B + C" is not.
-//         Quirk:  INPUT seems broken?
+// 	Support for SD Library
+// 	Added: SAVE, FILES (mostly works), LOAD (mostly works) (redirects IO)
+// 	Added: MEM, ? (PRINT)
+// 	Quirk:  "10 LET A=B+C" is ok "10 LET A = B + C" is not.
+// 	Quirk:  INPUT seems broken?
 
 
 
-// IF testing with Visual C 
+// IF testing with Visual C, this needs to be the first thing in the file.
 //#include "stdafx.h"
-char eliminateCompileErrors = 1; 
+
+
+char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 #define ARDUINO 1
 
+////////////////////////////////////////////////////////////////////////////////
 // Feature configuration...
 
 // This enables LOAD, SAVE, FILES commands through the Arduino SD Library
@@ -28,9 +40,9 @@ char eliminateCompileErrors = 1;
 #define ENABLE_FILEIO 1
 
 
-
+////////////////////////////////////////////////////////////////////////////////
 #if ARDUINO
-  // includes for Arduino functionality
+  // includes, and settings for Arduino-specific functionality
   #if ENABLE_FILEIO
   #include <SD.h>
 
@@ -59,9 +71,10 @@ char eliminateCompileErrors = 1;
 
   // size of our program ram
   #define kRamSize   4096
-
 #endif
 
+
+////////////////////////////////////////////////////////////////////////////////
 // ASCII Characters
 #define CR	'\r'
 #define NL	'\n'
@@ -209,7 +222,7 @@ static const unsigned char okmsg[]            = "OK";
 static const unsigned char whatmsg[]          = "What? ";
 static const unsigned char howmsg[]           =	"How?";
 static const unsigned char sorrymsg[]         = "Sorry!";
-static const unsigned char initmsg[]          = "TinyBasic in C V0.02a";
+static const unsigned char initmsg[]          = "TinyBasic Plus V0.03";
 static const unsigned char memorymsg[]        = " bytes free.";
 static const unsigned char breakmsg[]         = "break!";
 static const unsigned char unimplimentedmsg[] = "Unimplemented";
@@ -477,6 +490,15 @@ void printline()
 /***************************************************************************/
 static short int expr4(void)
 {
+        // fix provided by Jürg Wullschleger wullschleger@gmail.com
+        // fixes whitespace and unary operations
+        ignore_blanks();
+        if( *txtpos == '-' ) {
+          txtpos++;
+          return -expr4();
+        }
+	// end fix
+
 	if(*txtpos == '0')
 	{
 		txtpos++;
