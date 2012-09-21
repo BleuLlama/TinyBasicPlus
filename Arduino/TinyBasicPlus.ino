@@ -8,10 +8,15 @@
 
 
 // v0.04: 2012-09-20
-// 	Updated for building desktop command line app
+//      DELAY ms   - for delaying
+//      PINMODE <pin>, INPUT|IN|I|OUTPUT|OUT|O
+//      DWRITE <pin>, HIGH|HI|1|LOW|LO|0
+//      AWRITE <pin>, [0..255]
+//      fixed "save" appending to existing files instead of overwriting
+// 	Updated for building desktop command line app (incomplete)
 //
 // v0.03: 2012-09-19
-//	Integrated Jürg Wullschleger's whitespace,unary fix
+//	Integrated Jï¿½rg Wullschleger whitespace,unary fix
 //	Now available through github
 //	Project renamed from "Tiny Basic in C" to "TinyBasic Plus"
 //	   
@@ -68,9 +73,6 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
   // for file writing
   #if ENABLE_FILEIO
   File fp;
-  static boolean sd_is_initialized = false;
-  static boolean outToFile = false;
-  static boolean inFromFile = false;
   #endif
 
 
@@ -80,6 +82,27 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
   // size of our program ram
   #define kRamSize   4096
+
+  #if ENABLE_FILEIO
+  FILE * fp;
+  // functions defined elsehwere
+  void cmd_Files( void );
+  #endif
+  
+  #ifndef boolean 
+  #define boolean int
+  #define true 1
+  #define false 0
+  #endif
+#endif
+
+
+#if ENABLE_FILEIO
+  unsigned char * filenameWord(void);
+
+  static boolean sd_is_initialized = false;
+  static boolean outToFile = false;
+  static boolean inFromFile = false;
 #endif
 
 
@@ -135,6 +158,11 @@ static unsigned char keywords[] = {
         'F','I','L','E','S'+0x80,
         'M','E','M'+0x80,
         '?'+ 0x80,
+        '\''+ 0x80,
+        'A','W','R','I','T','E'+0x80,
+        'D','W','R','I','T','E'+0x80,
+        'P','I','N','M','O','D','E'+0x80,
+        'D','E','L','A','Y'+0x80,
 	0
 };
 
@@ -159,7 +187,12 @@ static unsigned char keywords[] = {
 #define KW_FILES        18
 #define KW_MEM          19
 #define KW_QMARK        20
-#define KW_DEFAULT	21
+#define KW_QUOTE        21
+#define KW_AWRITE       22
+#define KW_DWRITE       23
+#define KW_PINMODE      24
+#define KW_DELAY        25
+#define KW_DEFAULT	26
 
 struct stack_for_frame {
 	char frame_type;
@@ -179,11 +212,15 @@ struct stack_gosub_frame {
 static unsigned char func_tab[] = {
 	'P','E','E','K'+0x80,
 	'A','B','S'+0x80,
+        'A','R','E','A','D'+0x80,
+        'D','R','E','A','D'+0x80,
 	0
 };
 #define FUNC_PEEK    0
-#define FUNC_ABS	 1
-#define FUNC_UNKNOWN 2
+#define FUNC_ABS     1
+#define FUNC_AREAD   2
+#define FUNC_DREAD   3
+#define FUNC_UNKNOWN 4
 
 static unsigned char to_tab[] = {
 	'T','O'+0x80,
@@ -212,6 +249,28 @@ static unsigned char relop_tab[] = {
 #define RELOP_LE		4
 #define RELOP_LT		5
 #define RELOP_UNKNOWN	6
+
+static unsigned char highlow_tab[] = { 
+  'H','I','G','H'+0x80,
+  'H','I'+0x80,
+  'L','O','W'+0x80,
+  'L','O'+0x80,
+  0
+};
+#define HIGHLOW_HIGH    1
+#define HIGHLOW_UNKNOWN 4
+
+static unsigned char inputoutput_tab[] = {
+  'I','N','P','U','T'+0x80,
+  'I','N'+0x80,
+  'I'+0x80,
+  'O','U','T','P','U','T'+0x80,
+  'O','U','T'+0x80,
+  'O'+0x80,
+  0
+};
+#define INPUTOUTPUT_IN  2
+#define INPUTOUTPUT_UNKNOWN 6
 
 #define STACK_SIZE (sizeof(struct stack_for_frame)*5)
 #define VAR_SIZE sizeof(short int) // Size of variables in bytes
@@ -312,7 +371,7 @@ static unsigned char popb()
 }
 
 /***************************************************************************/
-static void printnum(int num)
+void printnum(int num)
 {
 	int digits = 0;
 
@@ -357,7 +416,7 @@ static unsigned short testnum(void)
 }
 
 /***************************************************************************/
-static void printmsgNoNL(const unsigned char *msg)
+void printmsgNoNL(const unsigned char *msg)
 {
 	while(*msg)
 	{
@@ -395,7 +454,7 @@ static unsigned char print_quoted_string(void)
 }
 
 /***************************************************************************/
-static void printmsg(const unsigned char *msg)
+void printmsg(const unsigned char *msg)
 {
 	printmsgNoNL(msg);
     line_terminator();
@@ -500,9 +559,10 @@ void printline()
 /***************************************************************************/
 static short int expr4(void)
 {
-        // fix provided by Jürg Wullschleger wullschleger@gmail.com
+        // fix provided by Jï¿½rg Wullschleger wullschleger@gmail.com
         // fixes whitespace and unary operations
         ignore_blanks();
+        
         if( *txtpos == '-' ) {
           txtpos++;
           return -expr4();
@@ -554,6 +614,11 @@ static short int expr4(void)
 		txtpos++;
 		switch(f)
 		{
+                        case FUNC_AREAD:
+                                return analogRead( a );                        
+                        case FUNC_DREAD:
+                                return digitalRead( a );
+                                
 			case FUNC_PEEK:
 				return program[a];
 			case FUNC_ABS:
@@ -587,6 +652,9 @@ static short int expr3(void)
 	short int a,b;
 
 	a = expr4();
+
+        ignore_blanks(); // fix for eg:  100 a = a + 1
+
 	while(1)
 	{
 		if(*txtpos == '*')
@@ -643,6 +711,7 @@ static short int expression(void)
 	short int a,b;
 
 	a = expr2();
+
 	// Check if we have an error
 	if(expression_error)	return a;
 
@@ -686,6 +755,8 @@ void loop()
 	unsigned char *start;
 	unsigned char *newEnd;
 	unsigned char linelen;
+        boolean isDigital;
+        int val;
 	
 	program_start = program;
 	program_end = program_start;
@@ -865,6 +936,18 @@ interperateAtTxtpos:
 
 	switch(table_index)
 	{
+                case KW_DELAY:
+                {
+#if ARDUINO
+			expression_error = 0;
+			val = expression();
+                        delay( val );
+			goto execnextline;
+#else
+                        goto unimplemented;
+#endif
+                }
+
                 case KW_FILES:
                         goto files;
        		case KW_LIST:
@@ -909,7 +992,8 @@ interperateAtTxtpos:
 			goto gosub;
 		case KW_RETURN:
 			goto gosub_return; 
-		case KW_REM:	
+		case KW_REM:
+                case KW_QUOTE:
 			goto execnextline;	// Ignore line completely
 		case KW_FOR:
 			goto forloop; 
@@ -929,6 +1013,16 @@ interperateAtTxtpos:
 		case KW_BYE:
 			// Leave the basic interperater
 			return;
+
+                case KW_PINMODE:  // PINMODE <pin>, INPUT/OUTPUT
+                        goto pinmode;
+                case KW_AWRITE:  // AWRITE <pin>, HIGH|LOW
+                        isDigital = false;
+                        goto awrite;
+                case KW_DWRITE:  // DWRITE <pin>, HIGH|LOW
+                        isDigital = true;
+                        goto dwrite;
+                
 		case KW_DEFAULT:
 			goto assignment;
 		default:
@@ -961,6 +1055,7 @@ input:
 
 		goto run_next_statement;
 	}
+
 forloop:
 	{
 		unsigned char var;
@@ -1230,54 +1325,111 @@ mem:
 	printmsg(memorymsg);
         goto run_next_statement;
         
+        
+/*************************************************/
+
+#if ARDUINO
+pinmode: // PINMODE <pin>, I/O
+        {
+		short int pinNo;
+
+		// Get the pin number
+		expression_error = 0;
+		pinNo = expression();
+		if(expression_error)
+			goto qwhat;
+
+		// check for a comma
+		ignore_blanks();
+		if (*txtpos != ',')
+			goto qwhat;
+		txtpos++;
+		ignore_blanks();
+
+                // look for the keyword for Input/Output
+		scantable(inputoutput_tab);
+		if(table_index == INPUTOUTPUT_UNKNOWN)
+			goto qwhat;
+
+                if( table_index <= INPUTOUTPUT_IN )
+                {
+                  pinMode( pinNo, INPUT );
+                } else {
+                  pinMode( pinNo, OUTPUT );
+                }
+        }
+        goto run_next_statement;
+        
+awrite: // AWRITE <pin>,val
+dwrite:
+        {
+		short int pinNo;
+                short int value;
+                unsigned char *txtposBak;
+
+		// Get the pin number
+		expression_error = 0;
+		pinNo = expression();
+		if(expression_error)
+			goto qwhat;
+
+		// check for a comma
+		ignore_blanks();
+		if (*txtpos != ',')
+			goto qwhat;
+		txtpos++;
+		ignore_blanks();
+
+
+                txtposBak = txtpos; 
+                scantable(highlow_tab);
+		if(table_index != HIGHLOW_UNKNOWN)
+                {
+                  if( table_index <= HIGHLOW_HIGH ) {
+                    value = 1;
+                  } else {
+                    value = 0;
+                  }
+                } else {
+
+                  // and the value (numerical)
+                  expression_error = 0;
+  		  value = expression();
+  		  if(expression_error)
+  			goto qwhat;
+                }
+
+                if( isDigital ) {
+                  digitalWrite( pinNo, value );
+                } else {
+                  analogWrite( pinNo, value );
+                }
+        }
+        goto run_next_statement;
+#else
+pinmode: // PINMODE <pin>, I/O
+awrite: // AWRITE <pin>,val
+dwrite:
+        goto unimplemented;
+#endif
+
 /*************************************************/
 
 files:
         // display a listing of files on the device.
         // version 1: no support for subdirectories
-#if ARDUINO && ENABLE_FILEIO
-        if( initSD() == kSD_OK ){
-          File dir = SD.open( "/" );
-          while( true ) {
-            File entry = dir.openNextFile();
-            if( !entry ) {
-              entry.close();
-              break;
-            }
-            
-            // common header
-            printmsgNoNL( indentmsg );
-            printmsgNoNL( (const unsigned char *)entry.name() );
-            if( entry.isDirectory() ) {
-                printmsgNoNL( (const unsigned char *)"/" );
-            }
-            
-            if( entry.isDirectory() ) {
-              // directory ending
-              for( int i=strlen( entry.name()) ; i<16 ; i++ ) {
-                printmsgNoNL( (const unsigned char *)" " );
-              }
-              printmsgNoNL( dirextmsg );
-            } else {
-              // file ending
-              for( int i=strlen( entry.name()) ; i<17 ; i++ ) {
-                printmsgNoNL( (const unsigned char *)" " );
-              }
-              printnum( entry.size() );
-            }
-            line_terminator();
-            entry.close();
-          }
-          dir.close();
-        }
-        goto warmstart;
+
+#if ENABLE_FILEIO
+	cmd_Files();
+	goto warmstart;
 #else
-        goto unimplemented;
+	goto unimplemented;
 #endif
+
 
 load:
         // load from a file into memory
-#if ARDUINO && ENABLE_FILEIO
+#if ENABLE_FILEIO
         {
           unsigned char *filename;
           
@@ -1287,6 +1439,8 @@ load:
           if(expression_error)
             goto qwhat;
 
+#if ARDUINO
+	  // Arduino specific
           if( !SD.exists( (char *)filename ))
           {
             printmsg( sdfilemsg );
@@ -1294,6 +1448,9 @@ load:
 
             fp = SD.open( (const char *)filename );
             inFromFile = true;
+#else
+	  // Desktop specific
+#endif
             // this will kickstart a series of events to read in from the file.
           }
           
@@ -1305,7 +1462,7 @@ load:
         
 save:
         // save from memory out to a file
-#if ARDUINO && ENABLE_FILEIO
+#if ENABLE_FILEIO
         {
           unsigned char *filename;
 
@@ -1314,6 +1471,12 @@ save:
           filename = filenameWord();
           if(expression_error)
             goto qwhat;
+          
+#if ARDUINO
+          // remove the old file if it exists
+          if( SD.exists( (char *)filename )) {
+            SD.remove( (char *)filename );
+          }
           
           // open the file, switch over to file output
           fp = SD.open( (const char *)filename, FILE_WRITE );
@@ -1327,6 +1490,9 @@ save:
           // go back to standard output, close the file
           outToFile = false;
           fp.close();
+#else
+	// desktop
+#endif
 
           goto warmstart;
        }
@@ -1477,7 +1643,7 @@ static void outchar(unsigned char c)
 static int initSD( void )
 {
   // if the card is already initialized, we just go with it.
-  // there's no support (yet?) for hot-swap of SD Cards. if you need to 
+  // there is no support (yet?) for hot-swap of SD Cards. if you need to 
   // swap, pop the card, reset the arduino.)
   
   if( sd_is_initialized == true ) return kSD_OK;
@@ -1499,5 +1665,43 @@ static int initSD( void )
   inFromFile = false;
 
   return kSD_OK;
+}
+#endif
+
+#if ARDUINO
+void cmd_Files( void )
+{
+    File dir = SD.open( "/" );
+    while( true ) {
+	File entry = dir.openNextFile();
+	if( !entry ) {
+	  entry.close();
+	  break;
+	}
+
+	// common header
+	printmsgNoNL( indentmsg );
+	printmsgNoNL( (const unsigned char *)entry.name() );
+	if( entry.isDirectory() ) {
+	    printmsgNoNL( (const unsigned char *)"/" );
+	}
+
+	if( entry.isDirectory() ) {
+	  // directory ending
+	  for( int i=strlen( entry.name()) ; i<16 ; i++ ) {
+	    printmsgNoNL( (const unsigned char *)" " );
+	  }
+	  printmsgNoNL( dirextmsg );
+	} else {
+	  // file ending
+	  for( int i=strlen( entry.name()) ; i<17 ; i++ ) {
+	    printmsgNoNL( (const unsigned char *)" " );
+	  }
+	  printnum( entry.size() );
+	}
+	line_terminator();
+	entry.close();
+    }
+    dir.close();
 }
 #endif
