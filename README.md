@@ -16,22 +16,56 @@ Features added include support for fileio (SD Library), smaller
 footprint (PROGMEM), and soon support for pin data IO as well as
 PS2 input devices and LCD output devices.
 
-# New statements and functions
-- MEM - dislays avalable program memory
-- ? - synonymous with "PRINT"
-- ' - synonymous with "REM"
-- DELAY ms	- delay for "ms" milliseconds
-- FILES, LOAD, SAVE - use the SD Library for file IO
-- PINMODE, DWRITE, DREAD, AWRITE, AREAD for Arduino data IO
+# Full list of supported statements and functions
 
-# Current Device Support
+## Files, System
+- BYE		*exits Basic, soft reboot on Arduino*
+- FILES			*lists the files on the SD card*
+- LOAD filename.bas	*loads a file from the SD card*
+- MEM		*displays memory usage statistics*
+- NEW		*clears the current program*
+- RUN		*executes the current program*
+- SAVE filename.bas	*saves the current program to the SD card, overwriting*
+- STOP 		*stops execution from the program (ie "END")*
+
+## IO, Documentation
+- PRINT expression	*print out the expression, also "?"*
+- REM stuff		*remark/comment, also "'"*
+- PEEK( address )	*set a value in memory*
+- POKE			*get a value in memory*
+
+## Expressions, Math
+- A=V, LET A=V	*assign value to a variable*
+- +, -, *, / *Math*
+- <,<=,=,<>,>=,> *Comparisons*
+- ABS( expression )  *returns the absolute value of the expression*
+
+## Control
+- IF expression statement *perform statement if expression is true*
+- FOR variable = start TO end	*start for block*
+- FOR variable = start TO end STEP value *start for block with step*
+- NEXT *end of for block*
+- GOTO linenumber *continue execution at this line number*
+- GOSUB linenumber *call a subroutine at this line number*
+- RETURN	*return from a subroutine*
+
+## Arduino Specific
+- DELAY value	*wait (in milliseconds)*
+- PINMODE pin,mode *set pin as input or output (INPUT,IN,I,1,OUTPUT,OUT,O,0)*
+- DWRITE pin,value *set pin with a value (HIGH,HI,LOW,LO)*
+- AWRITE pin,value *set pin with analog value (pwm) 0..255*
+- DREAD( pin ) *get the value of the pin* 
+- AREAD( analogPin ) *get the value of the analog pin*
+
+
+# Device Support
+## Current
 - Arduino - ATMega 168 (~400 bytes available)
 - Arduino - ATMega 368 (~1400 bytes available)
-- SD cards (via SD Library, for FILES, LOAD, SAVE commands)
+- SD cards (via SD Library, for FILES, LOAD, SAVE commands, uses 9k of rom)
 - Serial IO - command console
 
-# Future Device Support
-- Arduino Digital/Analog IO control
+## Future
 - PS2 Keyboard for standalone use
 - LCD Panel for standalone use
 
@@ -40,13 +74,14 @@ PS2 input devices and LCD output devices.
 - If LOAD or SAVE are called, FILES fails subsequent listings
 - SD cards are not hot-swappable. A reset is required between swaps.
 
+
 # Authors and Contributors
 
 - Tiny Basic 68k - Gordon Brandly [Project Page](http://members.shaw.ca/gbrandly/68ktinyb.html)
 - Arduino Basic / Tiny Basic C - Michael Field [Project Page](http://ec2-122-248-210-243.ap-southeast-1.compute.amazonaws.com/mediawiki/index.php/Arduino_Basic)
 - Tiny Basic Plus - Scott Lawrence <yorgle@gmail.com> [Github Page](http://github.com/BleuLlama/TinyBasicPlus]
 
-- J�rg Wullschleger - Fix for unary operations and whitespace in expressions
+- Jurg Wullschleger - Fix for unary operations and whitespace in expressions
 
 # Links
 - [Arduino Microcontroller](http://arduino.cc)
