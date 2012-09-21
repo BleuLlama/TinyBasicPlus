@@ -19,8 +19,10 @@ PS2 input devices and LCD output devices.
 # New statements and functions
 - MEM - dislays avalable program memory
 - ? - synonymous with "PRINT"
+- ' - synonymous with "REM"
 - DELAY ms	- delay for "ms" milliseconds
-- FILES, LOAD, SAVE - use the SD Library
+- FILES, LOAD, SAVE - use the SD Library for file IO
+- PINMODE, DWRITE, DREAD, AWRITE, AREAD for Arduino data IO
 
 # Current Device Support
 - Arduino - ATMega 168 (~400 bytes available)
