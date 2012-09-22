@@ -20,19 +20,19 @@ PS2 input devices and LCD output devices.
 
 ## Files, System
 - BYE		- *exits Basic, soft reboot on Arduino*
+- END 		- *stops execution from the program, also "STOP"*
 - FILES		- 	*lists the files on the SD card*
 - LOAD filename.bas	- *loads a file from the SD card*
 - MEM		- *displays memory usage statistics*
 - NEW		- *clears the current program*
 - RUN		- *executes the current program*
 - SAVE filename.bas	- *saves the current program to the SD card, overwriting*
-- STOP 		- *stops execution from the program (ie "END")*
 
 ## IO, Documentation
-- PRINT expression	- *print out the expression, also "?"*
-- REM stuff		- *remark/comment, also "'"*
 - PEEK( address )	- *set a value in memory*
 - POKE			- *get a value in memory*
+- PRINT expression	- *print out the expression, also "?"*
+- REM stuff		- *remark/comment, also "'"*
 
 ## Expressions, Math
 - A=V, LET A=V	- *assign value to a variable*

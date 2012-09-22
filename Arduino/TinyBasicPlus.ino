@@ -6,7 +6,12 @@
 //	    Scott Lawrence <yorgle@gmail.com>
 //
 
-
+// v0.05: 2012-09-21
+//      CHAIN to load and run a second file
+//      RND,RSEED for random stuff
+//      Added "!=" for "<>" synonym
+//      Added "END" for "STOP" synonym (proper name for the functionality anyway)
+//
 // v0.04: 2012-09-20
 //      DELAY ms   - for delaying
 //      PINMODE <pin>, INPUT|IN|I|OUTPUT|OUT|O
@@ -16,7 +21,7 @@
 // 	Updated for building desktop command line app (incomplete)
 //
 // v0.03: 2012-09-19
-//	Integrated J�rg Wullschleger whitespace,unary fix
+//	Integrated Jurg Wullschleger whitespace,unary fix
 //	Now available through github
 //	Project renamed from "Tiny Basic in C" to "TinyBasic Plus"
 //	   
@@ -103,7 +108,10 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
   static boolean sd_is_initialized = false;
   static boolean outToFile = false;
   static boolean inFromFile = false;
+  static boolean inhibitOutput = false;
 #endif
+static boolean runAfterLoad = false;
+static boolean triggerRun = false;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,7 +171,10 @@ static unsigned char keywords[] = {
         'D','W','R','I','T','E'+0x80,
         'P','I','N','M','O','D','E'+0x80,
         'D','E','L','A','Y'+0x80,
-	0
+        'E','N','D'+0x80,
+        'R','S','E','E','D'+0x80,
+        'C','H','A','I','N'+0x80,
+        0
 };
 
 #define KW_LIST		0
@@ -192,7 +203,11 @@ static unsigned char keywords[] = {
 #define KW_DWRITE       23
 #define KW_PINMODE      24
 #define KW_DELAY        25
-#define KW_DEFAULT	26
+#define KW_END          26
+#define KW_RSEED        27
+#define KW_CHAIN        28
+#define KW_DEFAULT	29
+
 
 struct stack_for_frame {
 	char frame_type;
@@ -214,13 +229,15 @@ static unsigned char func_tab[] = {
 	'A','B','S'+0x80,
         'A','R','E','A','D'+0x80,
         'D','R','E','A','D'+0x80,
+        'R','N','D'+0x80,
 	0
 };
 #define FUNC_PEEK    0
 #define FUNC_ABS     1
 #define FUNC_AREAD   2
 #define FUNC_DREAD   3
-#define FUNC_UNKNOWN 4
+#define FUNC_RND     4
+#define FUNC_UNKNOWN 5
 
 static unsigned char to_tab[] = {
 	'T','O'+0x80,
@@ -239,6 +256,7 @@ static unsigned char relop_tab[] = {
 	'='+0x80,
 	'<','='+0x80,
 	'<'+0x80,
+        '!','='+0x80,
 	0
 };
 
@@ -248,7 +266,8 @@ static unsigned char relop_tab[] = {
 #define RELOP_EQ		3
 #define RELOP_LE		4
 #define RELOP_LT		5
-#define RELOP_UNKNOWN	6
+#define RELOP_NE_BANG		6
+#define RELOP_UNKNOWN	7
 
 static unsigned char highlow_tab[] = { 
   'H','I','G','H'+0x80,
@@ -291,7 +310,7 @@ static const unsigned char okmsg[]            = "OK";
 static const unsigned char whatmsg[]          = "What? ";
 static const unsigned char howmsg[]           =	"How?";
 static const unsigned char sorrymsg[]         = "Sorry!";
-static const unsigned char initmsg[]          = "TinyBasic Plus V0.04";
+static const unsigned char initmsg[]          = "TinyBasic Plus V0.05";
 static const unsigned char memorymsg[]        = " bytes free.";
 static const unsigned char breakmsg[]         = "break!";
 static const unsigned char unimplimentedmsg[] = "Unimplemented";
@@ -463,7 +482,7 @@ void printmsg(const unsigned char *msg)
 /***************************************************************************/
 static void getln(char prompt)
 {
-	outchar(prompt);
+  	outchar(prompt);
 	txtpos = program_end+sizeof(LINENUM);
 
 	while(1)
@@ -482,7 +501,8 @@ static void getln(char prompt)
 				if(txtpos == program_end)
 					break;
 				txtpos--;
-				printmsg(backspacemsg);
+
+  				printmsg(backspacemsg);
 				break;
 			default:
 				// We need to leave at least one space to allow us to shuffle the line into order
@@ -492,9 +512,7 @@ static void getln(char prompt)
 				{
 					txtpos[0] = c;
 					txtpos++;
-#if ECHO_CHARS
 					outchar(c);
-#endif
 				}
 		}
 	}
@@ -614,17 +632,20 @@ static short int expr4(void)
 		txtpos++;
 		switch(f)
 		{
-                        case FUNC_AREAD:
-                                return analogRead( a );                        
-                        case FUNC_DREAD:
-                                return digitalRead( a );
-                                
 			case FUNC_PEEK:
 				return program[a];
 			case FUNC_ABS:
 				if(a < 0) 
 					return -a;
 				return a;
+
+                        case FUNC_AREAD:
+                                return analogRead( a );                        
+                        case FUNC_DREAD:
+                                return digitalRead( a );
+                                
+                        case FUNC_RND:
+                                return( random( a ));
 		}
 	}
 
@@ -726,6 +747,7 @@ static short int expression(void)
 		if(a >= b) return 1;
 		break;
 	case RELOP_NE:
+	case RELOP_NE_BANG:
 		b = expr2();
 		if(a != b) return 1;
 		break;
@@ -770,10 +792,16 @@ void loop()
 warmstart:
 	// this signifies that it is running in 'direct' mode.
 	current_line = 0;
-	sp = program+sizeof(program);  
+	sp = program+sizeof(program);
 	printmsg(okmsg);
 
 prompt:
+        if( triggerRun ){
+          triggerRun = false;
+          current_line = program_start;
+          goto execline;
+        }
+
 	getln('>');
 	toUppercaseBuffer();
 
@@ -952,6 +980,8 @@ interperateAtTxtpos:
                         goto files;
        		case KW_LIST:
 			goto list;
+                case KW_CHAIN:
+                        goto chain;
 		case KW_LOAD:
 			goto load;
                 case KW_MEM:
@@ -1004,6 +1034,7 @@ interperateAtTxtpos:
 			goto print;
 		case KW_POKE:
 			goto poke;
+		case KW_END:
 		case KW_STOP:
 			// This is the easy way to end - set the current line to the end of program attempt to run it
 			if(txtpos[0] != NL)
@@ -1022,13 +1053,17 @@ interperateAtTxtpos:
                 case KW_DWRITE:  // DWRITE <pin>, HIGH|LOW
                         isDigital = true;
                         goto dwrite;
-                
+                        
+                case KW_RSEED:
+                        goto rseed;
+                        
 		case KW_DEFAULT:
 			goto assignment;
 		default:
 			break;
 	}
-	
+
+
 execnextline:
 	if(current_line == NULL)		// Processing direct commands?
 		goto prompt;
@@ -1427,7 +1462,13 @@ files:
 #endif
 
 
+chain:
+        runAfterLoad = true;
+        
 load:
+        // clear the program
+        program_end = program_start;
+
         // load from a file into memory
 #if ENABLE_FILEIO
         {
@@ -1448,6 +1489,7 @@ load:
 
             fp = SD.open( (const char *)filename );
             inFromFile = true;
+            inhibitOutput = true;
 #else
 	  // Desktop specific
 #endif
@@ -1459,6 +1501,8 @@ load:
 #else
         goto unimplemented;
 #endif
+
+
         
 save:
         // save from memory out to a file
@@ -1499,6 +1543,19 @@ save:
 #else
         goto unimplemented;
 #endif
+rseed:
+      {
+        short int value;
+
+        //Get the pin number
+        expression_error = 0;
+        value = expression();
+        if(expression_error)
+          goto qwhat;
+
+        randomSeed( value );
+        goto run_next_statement;
+      }
 
 }
 
@@ -1591,7 +1648,13 @@ static int inchar()
     if( v == NL ) v=CR; // file translate
     if( !fp.available() ) {
      inFromFile = false;
+     inhibitOutput = false;
      fp.close();
+     
+     if( runAfterLoad ) {
+       runAfterLoad = false;
+       triggerRun = true;
+     }
     }
     return v;    
   } else {
@@ -1619,6 +1682,8 @@ static int inchar()
 /***********************************************************/
 static void outchar(unsigned char c)
 {
+  if( inhibitOutput ) return;
+
 #if ARDUINO
 #if ENABLE_FILEIO
   if( outToFile ) {
@@ -1663,6 +1728,7 @@ static int initSD( void )
   // and our file redirection flags
   outToFile = false;
   inFromFile = false;
+  inhibitOutput = false;
 
   return kSD_OK;
 }
