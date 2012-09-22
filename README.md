@@ -20,6 +20,7 @@ PS2 input devices and LCD output devices.
 
 ## Files, System
 - BYE		- *exits Basic, soft reboot on Arduino*
+- CHAIN filename.bas - *equivalent of: new, load filename.bas, run*
 - END 		- *stops execution from the program, also "STOP"*
 - FILES		- 	*lists the files on the SD card*
 - LOAD filename.bas	- *loads a file from the SD card*
@@ -37,8 +38,10 @@ PS2 input devices and LCD output devices.
 ## Expressions, Math
 - A=V, LET A=V	- *assign value to a variable*
 - +, -, \*, / - *Math*
-- <,<=,=,<>,>=,> - *Comparisons*
+- <,<=,=,<>,!=,>=,> - *Comparisons*
 - ABS( expression )  - *returns the absolute value of the expression*
+- RSEED( v ) - *sets the random seed to v*
+- RND( m ) - *returns a random number from 0 to m*
 
 ## Control
 - IF expression statement - *perform statement if expression is true*
