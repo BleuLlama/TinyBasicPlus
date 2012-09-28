@@ -6,6 +6,9 @@
 //	    Scott Lawrence <yorgle@gmail.com>
 //
 
+// v0.06: 2012-09-27
+//      Added optional second serial input, used for an external keyboard
+//
 // v0.05: 2012-09-21
 //      CHAIN to load and run a second file
 //      RND,RSEED for random stuff
@@ -45,6 +48,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 #define ARDUINO 1
 
+
 // hack to let makefiles work with this file unchanged
 #ifdef FORCE_DESKTOP
 #undef ARDUINO
@@ -56,11 +60,25 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 // This enables LOAD, SAVE, FILES commands through the Arduino SD Library
 // it adds 9k of usage as well.
 #define ENABLE_FILEIO 1
+//undef ENABLE_FILEIO
 
+// this adds a second serial port for input (keyboard, terminal)
+// it adds 1.5k of usage as well.
+//#define ENABLE_SECOND_SERIAL 1
+#undef ENABLE_SECOND_SERIAL
 
 ////////////////////////////////////////////////////////////////////////////////
 #if ARDUINO
   // includes, and settings for Arduino-specific functionality
+  #if ENABLE_SECOND_SERIAL
+  #include <SoftwareSerial.h>
+  #define kSS_RX 2
+  #define kSS_TX 3
+  
+  SoftwareSerial ssSerial( kSS_RX, kSS_TX );
+  #endif
+  
+  
   #if ENABLE_FILEIO
   #include <SD.h>
 
@@ -1613,10 +1631,16 @@ static void line_terminator(void)
 void setup()
 {
 #if ARDUINO
-  	Serial.begin(9600);	// opens serial port, sets data rate to 9600 bps
+  Serial.begin(9600);	// opens serial port, sets data rate to 9600 bps
+  while( !Serial ); // for Leonardo
 #if ENABLE_FILEIO
-        initSD();
+  initSD();
 #endif
+
+#if ENABLE_SECOND_SERIAL
+  ssSerial.begin(9600);
+#endif
+
 #endif
 }
 
@@ -1626,6 +1650,10 @@ static unsigned char breakcheck(void)
 #if ARDUINO
   if(Serial.available())
     return Serial.read() == CTRLC;
+#if ENABLE_SECOND_SERIAL
+  if(ssSerial.available())
+    return ssSerial.read() == CTRLC;
+#endif
   return 0;
 #else
 #ifdef __CONIO__
@@ -1664,6 +1692,12 @@ static int inchar()
     {
       if(Serial.available())
         return Serial.read();
+        
+#if ENABLE_SECOND_SERIAL
+      if(ssSerial.available())
+        return ssSerial.read();
+#endif
+
     }
 #if ENABLE_FILEIO
   }
@@ -1690,11 +1724,10 @@ static void outchar(unsigned char c)
     // output to a file
     fp.write( c );
   } else {
-#endif
     Serial.write(c);
-#if ENABLE_FILEIO
   }
 #endif
+
 #else
 	putchar(c);
 #endif
