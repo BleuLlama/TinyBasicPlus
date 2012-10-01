@@ -7,14 +7,16 @@ of "68000 Tiny Basic", and then ported to C by Michael Field as
 "Arduino Basic", though still called "Tiny Basic" in the source
 files.
 
-TinyBasic Plus is an extension and modification upon Michael''s work,
-adding support for a few more devices, configurable at build time.
-It is designed for use on the Arduino, although builds will soon
-be easily possible for other platforms through command line makefiles.
+TinyBasic Plus is an extension and modification upon the original
+"Tiny Basic" by adding support for a few more devices, configurable
+at build time.  It is designed for use on the Arduino, although
+builds will soon be easily possible for other platforms through
+command line makefiles.
 
-Features added include support for fileio (SD Library), smaller
-footprint (PROGMEM), and soon support for pin data IO as well as
-PS2 input devices and LCD output devices.
+Features added include support for fileio (SD Library), autorunning
+a program from the SD card, smaller footprint (PROGMEM), support
+for pin data IO, and future support for PS2 input devices and LCD
+output devices.
 
 # Full list of supported statements and functions
 
@@ -52,7 +54,7 @@ PS2 input devices and LCD output devices.
 - GOSUB linenumber - *call a subroutine at this line number*
 - RETURN	- *return from a subroutine*
 
-## Arduino Specific
+## Pin IO 
 - DELAY value	*- wait (in milliseconds)*
 - PINMODE pin,mode - *set pin as input or output (INPUT,IN,I,1,OUTPUT,OUT,O,0)*
 - DWRITE pin,value - *set pin with a value (HIGH,HI,LOW,LO)*
@@ -63,14 +65,15 @@ PS2 input devices and LCD output devices.
 
 # Device Support
 ## Current
-- Arduino - ATMega 168 (~400 bytes available)
-- Arduino - ATMega 368 (~1400 bytes available)
+- Arduino - ATMega 168 (~300 bytes available)
+- Arduino - ATMega 368 (~1300 bytes available)
 - SD cards (via SD Library, for FILES, LOAD, SAVE commands, uses 9k of rom)
 - Serial IO - command console
 
 ## Future
 - PS2 Keyboard for standalone use
 - LCD Panel for standalone use
+- Graphics LCD support
 
 
 # Known Quirks and Limitations
