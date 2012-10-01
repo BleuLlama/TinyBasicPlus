@@ -6,6 +6,11 @@
 //	    Scott Lawrence <yorgle@gmail.com>
 //
 
+#define kVersion "v0.07"
+
+// v0.07: 2012-09-30
+//      Autorun buildtime configuration feature
+//
 // v0.06: 2012-09-27
 //      Added optional second serial input, used for an external keyboard
 //
@@ -66,6 +71,12 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 // it adds 1.5k of usage as well.
 //#define ENABLE_SECOND_SERIAL 1
 #undef ENABLE_SECOND_SERIAL
+
+// this turns on "autorun".  if there's FileIO, and a file "autorun.bas",
+// then it will load it and run it when starting up
+#define ENABLE_AUTORUN 1
+//#undef ENABLE_AUTORUN
+#define kAutorunFilename  "autorun.bas"
 
 ////////////////////////////////////////////////////////////////////////////////
 #if ARDUINO
@@ -328,7 +339,7 @@ static const unsigned char okmsg[]            = "OK";
 static const unsigned char whatmsg[]          = "What? ";
 static const unsigned char howmsg[]           =	"How?";
 static const unsigned char sorrymsg[]         = "Sorry!";
-static const unsigned char initmsg[]          = "TinyBasic Plus V0.05";
+static const unsigned char initmsg[]          = "TinyBasic Plus " kVersion;
 static const unsigned char memorymsg[]        = " bytes free.";
 static const unsigned char breakmsg[]         = "break!";
 static const unsigned char unimplimentedmsg[] = "Unimplemented";
@@ -1635,14 +1646,28 @@ void setup()
   while( !Serial ); // for Leonardo
 #if ENABLE_FILEIO
   initSD();
-#endif
+  
+  
+#if ENABLE_AUTORUN
+  if( SD.exists( kAutorunFilename )) {
+    program_end = program_start;
+    fp = SD.open( kAutorunFilename );
+    inFromFile = true;
+    inhibitOutput = true;
+    runAfterLoad = true;
+  }
+#endif /* ENABLE_AUTORUN */
+
+#endif /* ENABLE_FILEIO */
 
 #if ENABLE_SECOND_SERIAL
   ssSerial.begin(9600);
-#endif
+#endif /* ENABLE_SECOND_SERIAL */
+#endif /* ARDUINO */
 
-#endif
+
 }
+
 
 /***********************************************************/
 static unsigned char breakcheck(void)
