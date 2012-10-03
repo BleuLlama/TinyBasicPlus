@@ -55,13 +55,17 @@ output devices.
 - RETURN	- *return from a subroutine*
 
 ## Pin IO 
-- DELAY value	*- wait (in milliseconds)*
+- DELAY	timems*- wait (in milliseconds)*
 - PINMODE pin,mode - *set pin as input or output (INPUT,IN,I,1,OUTPUT,OUT,O,0)*
 - DWRITE pin,value - *set pin with a value (HIGH,HI,LOW,LO)*
 - AWRITE pin,value - *set pin with analog value (pwm) 0..255*
 - DREAD( pin ) - *get the value of the pin* 
 - AREAD( analogPin ) - *get the value of the analog pin*
 
+## Sound - Piezo wired with red/+ on pin 5 and black/- to ground
+- TONE freq,timems - play "freq" for "timems" milleseconds (1000 = 1 second)
+- TONEW freq,timems - same as above, but also waits for it to finish
+- NOTONE - stop playback of all playing tones
 
 # Device Support
 ## Current

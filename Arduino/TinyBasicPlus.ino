@@ -6,8 +6,11 @@
 //	    Scott Lawrence <yorgle@gmail.com>
 //
 
-#define kVersion "v0.07"
+#define kVersion "v0.08"
 
+// v0.08: 2012-10-02
+//      Tone generation through piezo added (TONE, TONEW, NOTONE)
+//
 // v0.07: 2012-09-30
 //      Autorun buildtime configuration feature
 //
@@ -74,9 +77,17 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 // this turns on "autorun".  if there's FileIO, and a file "autorun.bas",
 // then it will load it and run it when starting up
-#define ENABLE_AUTORUN 1
-//#undef ENABLE_AUTORUN
+//#define ENABLE_AUTORUN 1
+#undef ENABLE_AUTORUN
 #define kAutorunFilename  "autorun.bas"
+
+// this will enable the "TONE", "NOTONE" command using a piezo
+// element on the specified pin.  Wire the red/positive/piezo to the kPiezoPin,
+// and the black/negative/metal disc to ground.
+// it adds 1.5k of usage as well.
+#define ENABLE_TONES 1
+//#undef ENABLE_TONES
+#define kPiezoPin 5
 
 ////////////////////////////////////////////////////////////////////////////////
 #if ARDUINO
@@ -84,7 +95,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
   #if ENABLE_SECOND_SERIAL
   #include <SoftwareSerial.h>
   #define kSS_RX 2
-  #define kSS_TX 3
+  #define kSS_TX 33
   
   SoftwareSerial ssSerial( kSS_RX, kSS_TX );
   #endif
@@ -102,7 +113,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
   #endif
 
   // size of our program ram
-  #define kRamSize   412
+  #define kRamSize   255
   
   // for file writing
   #if ENABLE_FILEIO
@@ -203,40 +214,35 @@ static unsigned char keywords[] = {
         'E','N','D'+0x80,
         'R','S','E','E','D'+0x80,
         'C','H','A','I','N'+0x80,
+        'T','O','N','E','W'+0x80,
+        'T','O','N','E'+0x80,
+        'N','O','T','O','N','E'+0x80, 
         0
 };
 
-#define KW_LIST		0
-#define KW_LOAD		1
-#define KW_NEW		2
-#define KW_RUN		3
-#define KW_SAVE		4
-#define KW_NEXT		5
-#define KW_LET		6
-#define KW_IF		7
-#define KW_GOTO		8
-#define KW_GOSUB	9
-#define KW_RETURN	10
-#define KW_REM		11
-#define KW_FOR		12
-#define KW_INPUT	13
-#define KW_PRINT	14
-#define KW_POKE		15
-#define KW_STOP		16
-#define KW_BYE		17
-#define KW_FILES        18
-#define KW_MEM          19
-#define KW_QMARK        20
-#define KW_QUOTE        21
-#define KW_AWRITE       22
-#define KW_DWRITE       23
-#define KW_PINMODE      24
-#define KW_DELAY        25
-#define KW_END          26
-#define KW_RSEED        27
-#define KW_CHAIN        28
-#define KW_DEFAULT	29
-
+// by moving the command list to an enum, we can easily remove sections 
+// above and below simultaneously to selectively obliterate functionality.
+enum {
+  KW_LIST = 0,
+  KW_LOAD, KW_NEW, KW_RUN, KW_SAVE,
+  KW_NEXT, KW_LET, KW_IF,
+  KW_GOTO, KW_GOSUB, KW_RETURN,
+  KW_REM,
+  KW_FOR,
+  KW_INPUT, KW_PRINT,
+  KW_POKE,
+  KW_STOP, KW_BYE,
+  KW_FILES,
+  KW_MEM,
+  KW_QMARK, KW_QUOTE,
+  KW_AWRITE, KW_DWRITE, KW_PINMODE,
+  KW_DELAY,
+  KW_END,
+  KW_RSEED,
+  KW_CHAIN,
+  KW_TONEW, KW_TONE, KW_NOTONE,
+  KW_DEFAULT /* always the final one*/
+};
 
 struct stack_for_frame {
 	char frame_type;
@@ -807,8 +813,13 @@ void loop()
 	unsigned char *newEnd;
 	unsigned char linelen;
         boolean isDigital;
+        boolean alsoWait = false;
         int val;
-	
+
+#if ENABLE_TONES
+        noTone( kPiezoPin );
+#endif
+
 	program_start = program;
 	program_end = program_start;
 	sp = program+sizeof(program);  // Needed for printnum
@@ -1085,6 +1096,13 @@ interperateAtTxtpos:
                         
                 case KW_RSEED:
                         goto rseed;
+                        
+                case KW_TONEW:
+                        alsoWait = true;
+                case KW_TONE:
+                        goto tonegen;
+                case KW_NOTONE:
+                        goto tonestop;
                         
 		case KW_DEFAULT:
 			goto assignment;
@@ -1585,6 +1603,55 @@ rseed:
         randomSeed( value );
         goto run_next_statement;
       }
+
+tonestop:
+#if ENABLE_TONES
+      noTone( kPiezoPin );
+      goto run_next_statement;
+#else
+      goto unimplemented;
+#endif
+
+tonegen:
+#if ENABLE_TONES
+      {
+        // TONE freq, duration
+        // if either are 0, tones turned off
+        short int freq;
+        short int duration;
+
+        //Get the frequency
+        expression_error = 0;
+        freq = expression();
+        if(expression_error)
+          goto qwhat;
+          
+        ignore_blanks();
+	if (*txtpos != ',')
+	  goto qwhat;
+	 txtpos++;
+	 ignore_blanks();
+
+
+        //Get the duration
+        expression_error = 0;
+        duration = expression();
+        if(expression_error)
+          goto qwhat;
+        
+        if( freq == 0 || duration == 0 )
+          goto tonestop;
+          
+        tone( kPiezoPin, freq, duration );
+        if( alsoWait ) {
+          delay( duration );
+          alsoWait = false;
+        }
+        goto run_next_statement;
+      }
+#else
+      goto unimplemented;
+#endif
 
 }
 
