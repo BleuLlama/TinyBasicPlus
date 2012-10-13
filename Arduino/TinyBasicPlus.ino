@@ -6,8 +6,14 @@
 //	    Scott Lawrence <yorgle@gmail.com>
 //
 
-#define kVersion "v0.08"
+#define kVersion "v0.09"
 
+// v0.09: 2012-10-12
+//      Fixed directory listings.  FILES now always works. (bug in the SD library)
+//      ref: http://arduino.cc/forum/index.php/topic,124739.0.html
+//      fixed filesize printouts (added printUnum for unsigned numbers)
+//      #defineable baud rate for slow connection throttling
+//
 // v0.08: 2012-10-02
 //      Tone generation through piezo added (TONE, TONEW, NOTONE)
 //
@@ -88,6 +94,10 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 #define ENABLE_TONES 1
 //#undef ENABLE_TONES
 #define kPiezoPin 5
+
+// Sometimes, we connect with a slower device as the console.
+// Set your console D0/D1 baud rate here (9600 baud default
+#define kConsoleBaud 9600
 
 ////////////////////////////////////////////////////////////////////////////////
 #if ARDUINO
@@ -354,7 +364,9 @@ static const unsigned char indentmsg[]        = "    ";
 static const unsigned char sderrormsg[]       = "SD card error.";
 static const unsigned char sdfilemsg[]        = "SD file error.";
 static const unsigned char dirextmsg[]        = "(dir)";
-
+static const unsigned char slashmsg[]         = "/";
+static const unsigned char spacemsg[]         = " ";
+ 
 static int inchar(void);
 static void outchar(unsigned char c);
 static void line_terminator(void);
@@ -434,6 +446,23 @@ void printnum(int num)
 		num = -num;
 		outchar('-');
 	}
+	do {
+		pushb(num%10+'0');
+		num = num/10;
+		digits++;
+	}
+	while (num > 0);
+
+	while(digits > 0)
+	{
+		outchar(popb());
+		digits--;
+	}
+}
+
+void printUnum(unsigned int num)
+{
+	int digits = 0;
 
 	do {
 		pushb(num%10+'0');
@@ -448,6 +477,7 @@ void printnum(int num)
 		digits--;
 	}
 }
+
 /***************************************************************************/
 static unsigned short testnum(void)
 {
@@ -1709,7 +1739,7 @@ static void line_terminator(void)
 void setup()
 {
 #if ARDUINO
-  Serial.begin(9600);	// opens serial port, sets data rate to 9600 bps
+  Serial.begin(kConsoleBaud);	// opens serial port
   while( !Serial ); // for Leonardo
 #if ENABLE_FILEIO
   initSD();
@@ -1860,9 +1890,12 @@ static int initSD( void )
 #endif
 
 #if ARDUINO
+
 void cmd_Files( void )
 {
     File dir = SD.open( "/" );
+    dir.seek(0);
+
     while( true ) {
 	File entry = dir.openNextFile();
 	if( !entry ) {
@@ -1874,21 +1907,21 @@ void cmd_Files( void )
 	printmsgNoNL( indentmsg );
 	printmsgNoNL( (const unsigned char *)entry.name() );
 	if( entry.isDirectory() ) {
-	    printmsgNoNL( (const unsigned char *)"/" );
+	    printmsgNoNL( slashmsg );
 	}
 
 	if( entry.isDirectory() ) {
 	  // directory ending
 	  for( int i=strlen( entry.name()) ; i<16 ; i++ ) {
-	    printmsgNoNL( (const unsigned char *)" " );
+	    printmsgNoNL( spacemsg );
 	  }
 	  printmsgNoNL( dirextmsg );
 	} else {
 	  // file ending
 	  for( int i=strlen( entry.name()) ; i<17 ; i++ ) {
-	    printmsgNoNL( (const unsigned char *)" " );
+	    printmsgNoNL( spacemsg );
 	  }
-	  printnum( entry.size() );
+	  printUnum( entry.size() );
 	}
 	line_terminator();
 	entry.close();
