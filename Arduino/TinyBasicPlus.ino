@@ -642,7 +642,7 @@ void printline()
 /***************************************************************************/
 static short int expr4(void)
 {
-        // fix provided by J�rg Wullschleger wullschleger@gmail.com
+        // fix provided by Jurg Wullschleger wullschleger@gmail.com
         // fixes whitespace and unary operations
         ignore_blanks();
         
