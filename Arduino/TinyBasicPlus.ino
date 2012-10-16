@@ -8,6 +8,11 @@
 
 #define kVersion "v0.09"
 
+// v0.10; 2012-10-15
+//      added kAutoConf, which eliminates the "PINMODE" statement.
+//      now, DWRITE,DREAD,AWRITE,AREAD automatically set the PINMODE appropriately themselves.
+//      should save a few bytes in your programs.
+//
 // v0.09: 2012-10-12
 //      Fixed directory listings.  FILES now always works. (bug in the SD library)
 //      ref: http://arduino.cc/forum/index.php/topic,124739.0.html
@@ -98,6 +103,10 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 // Sometimes, we connect with a slower device as the console.
 // Set your console D0/D1 baud rate here (9600 baud default
 #define kConsoleBaud 9600
+
+// For digital write/read/analog write, we have an "autoconfigure" option
+// this makes the "pinmode" command obsolete, as it gets set internally.
+#define kAutoConf 1
 
 ////////////////////////////////////////////////////////////////////////////////
 #if ARDUINO
@@ -324,6 +333,7 @@ static unsigned char highlow_tab[] = {
 #define HIGHLOW_HIGH    1
 #define HIGHLOW_UNKNOWN 4
 
+#ifndef kAutoConf
 static unsigned char inputoutput_tab[] = {
   'I','N','P','U','T'+0x80,
   'I','N'+0x80,
@@ -335,6 +345,7 @@ static unsigned char inputoutput_tab[] = {
 };
 #define INPUTOUTPUT_IN  2
 #define INPUTOUTPUT_UNKNOWN 6
+#endif
 
 #define STACK_SIZE (sizeof(struct stack_for_frame)*5)
 #define VAR_SIZE sizeof(short int) // Size of variables in bytes
@@ -705,8 +716,14 @@ static short int expr4(void)
 				return a;
 
                         case FUNC_AREAD:
+#ifdef kAutoConf
+                                pinMode( a, INPUT );
+#endif
                                 return analogRead( a );                        
                         case FUNC_DREAD:
+#ifdef kAutoConf
+                                pinMode( a, INPUT );
+#endif
                                 return digitalRead( a );
                                 
                         case FUNC_RND:
@@ -1442,6 +1459,9 @@ mem:
 
 #if ARDUINO
 pinmode: // PINMODE <pin>, I/O
+#ifdef kAutoConf
+        goto unimplemented;
+#else
         {
 		short int pinNo;
 
@@ -1471,6 +1491,8 @@ pinmode: // PINMODE <pin>, I/O
                 }
         }
         goto run_next_statement;
+#endif
+
         
 awrite: // AWRITE <pin>,val
 dwrite:
@@ -1510,7 +1532,9 @@ dwrite:
   		  if(expression_error)
   			goto qwhat;
                 }
-
+#ifdef kAutoConf
+                pinMode( pinNo, OUTPUT );
+#endif
                 if( isDigital ) {
                   digitalWrite( pinNo, value );
                 } else {

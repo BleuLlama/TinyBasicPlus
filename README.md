@@ -67,6 +67,42 @@ output devices.
 - TONEW freq,timems - same as above, but also waits for it to finish
 - NOTONE - stop playback of all playing tones
 
+# Example programs
+
+Here are a few example programs to get you started...
+
+## Blink - hook up an LED between pin 3 and ground
+
+	10 FOR A=0 TO 10
+	20 DWRITE 3, HIGH
+	30 DELAY 250
+	40 DWRITE 3, LOW
+	50 DELAY 250
+	60 NEXT A
+
+## Fade - hook up an LED between pin 3 and ground
+
+	10 FOR A=0 TO 10
+	20 FOR B=0 TO 255
+	30 AWRITE 3, B
+	40 DELAY 10
+	50 NEXT B
+	60 FOR B=255 TO 0 STEP -1
+	70 AWRITE 3, B
+	80 DELAY 10
+	90 NEXT B
+	100 NEXT A
+
+## LED KNOB - hook up a potentiometeter between analog 2 and ground, led from digital 3 and ground.  If knob is at 0, it stops
+
+	10 A = AREAD( 2 )
+	20 PRINT A
+	30 B = A / 4
+	40 AWRITE 3, B
+	50 IF A == 0 GOTO 100
+	60 GOTO 10
+	100 PRINT "Done."
+
 # Device Support
 ## Current
 - Arduino - ATMega 168 (~300 bytes available)
