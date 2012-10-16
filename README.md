@@ -71,7 +71,9 @@ output devices.
 
 Here are a few example programs to get you started...
 
-## Blink - hook up an LED between pin 3 and ground
+## Blink
+
+hook up an LED between pin 3 and ground
 
 	10 FOR A=0 TO 10
 	20 DWRITE 3, HIGH
@@ -80,7 +82,9 @@ Here are a few example programs to get you started...
 	50 DELAY 250
 	60 NEXT A
 
-## Fade - hook up an LED between pin 3 and ground
+## Fade
+
+hook up an LED between pin 3 and ground
 
 	10 FOR A=0 TO 10
 	20 FOR B=0 TO 255
@@ -93,7 +97,9 @@ Here are a few example programs to get you started...
 	90 NEXT B
 	100 NEXT A
 
-## LED KNOB - hook up a potentiometeter between analog 2 and ground, led from digital 3 and ground.  If knob is at 0, it stops
+## LED KNOB
+
+hook up a potentiometeter between analog 2 and ground, led from digital 3 and ground.  If knob is at 0, it stops
 
 	10 A = AREAD( 2 )
 	20 PRINT A
