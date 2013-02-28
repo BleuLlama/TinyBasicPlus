@@ -6,9 +6,15 @@
 //	    Scott Lawrence <yorgle@gmail.com>
 //
 
-#define kVersion "v0.09"
+#define kVersion "v0.11"
 
-// v0.10; 2012-10-15
+// v0.11: 2013-02-20
+//      all display strings and tables moved to PROGMEM to save space
+//      removed second serial
+//      removed pinMode completely, autoconf is explicit
+//      beginnings of EEPROM related functionality (new,load,save,list)
+//
+// v0.10: 2012-10-15
 //      added kAutoConf, which eliminates the "PINMODE" statement.
 //      now, DWRITE,DREAD,AWRITE,AREAD automatically set the PINMODE appropriately themselves.
 //      should save a few bytes in your programs.
@@ -18,7 +24,7 @@
 //      ref: http://arduino.cc/forum/index.php/topic,124739.0.html
 //      fixed filesize printouts (added printUnum for unsigned numbers)
 //      #defineable baud rate for slow connection throttling
-//
+//e
 // v0.08: 2012-10-02
 //      Tone generation through piezo added (TONE, TONEW, NOTONE)
 //
@@ -65,12 +71,11 @@
 
 char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
-#define ARDUINO 1
-
-
 // hack to let makefiles work with this file unchanged
-#ifdef FORCE_DESKTOP
+#ifdef FORCE_DESKTOP 
 #undef ARDUINO
+#else
+#define ARDUINO 1
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,48 +83,44 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 // This enables LOAD, SAVE, FILES commands through the Arduino SD Library
 // it adds 9k of usage as well.
-#define ENABLE_FILEIO 1
-//undef ENABLE_FILEIO
-
-// this adds a second serial port for input (keyboard, terminal)
-// it adds 1.5k of usage as well.
-//#define ENABLE_SECOND_SERIAL 1
-#undef ENABLE_SECOND_SERIAL
+//#define ENABLE_FILEIO 1
+#undef ENABLE_FILEIO
 
 // this turns on "autorun".  if there's FileIO, and a file "autorun.bas",
 // then it will load it and run it when starting up
 //#define ENABLE_AUTORUN 1
 #undef ENABLE_AUTORUN
+// and this is the file that gets run
 #define kAutorunFilename  "autorun.bas"
 
 // this will enable the "TONE", "NOTONE" command using a piezo
 // element on the specified pin.  Wire the red/positive/piezo to the kPiezoPin,
 // and the black/negative/metal disc to ground.
 // it adds 1.5k of usage as well.
-#define ENABLE_TONES 1
-//#undef ENABLE_TONES
+//#define ENABLE_TONES 1
+#undef ENABLE_TONES
 #define kPiezoPin 5
 
-// Sometimes, we connect with a slower device as the console.
-// Set your console D0/D1 baud rate here (9600 baud default
-#define kConsoleBaud 9600
+// we can use the EEProm to store a program during powerdown.  This is 
+// 1kbyte on the '328, and 512 bytes on the '168.  Enabling this here will
+// allow for this funcitonality to work
+#define ENABLE_EEPROM
+//#undef ENABLE_EEPROM
 
-// For digital write/read/analog write, we have an "autoconfigure" option
-// this makes the "pinmode" command obsolete, as it gets set internally.
-#define kAutoConf 1
+// Sometimes, we connect with a slower device as the console.
+// Set your console D0/D1 baud rate here (9600 baud default)
+#define kConsoleBaud 9600
 
 ////////////////////////////////////////////////////////////////////////////////
 #if ARDUINO
+  // we're moving our data strings into progmem
+  #include <avr/pgmspace.h>
+
   // includes, and settings for Arduino-specific functionality
-  #if ENABLE_SECOND_SERIAL
-  #include <SoftwareSerial.h>
-  #define kSS_RX 2
-  #define kSS_TX 33
-  
-  SoftwareSerial ssSerial( kSS_RX, kSS_TX );
+  #ifdef ENABLE_EEPROM
+  #include <EEPROM.H>
   #endif
-  
-  
+
   #if ENABLE_FILEIO
   #include <SD.h>
 
@@ -132,8 +133,8 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
   #endif
 
   // size of our program ram
-  #define kRamSize   255
-  
+  #define kRamSize  (RAMEND - 1180)
+
   // for file writing
   #if ENABLE_FILEIO
   File fp;
@@ -167,10 +168,19 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
   static boolean sd_is_initialized = false;
   static boolean outToFile = false;
   static boolean inFromFile = false;
-  static boolean inhibitOutput = false;
 #endif
+static boolean inhibitOutput = false;
 static boolean runAfterLoad = false;
 static boolean triggerRun = false;
+
+// these will select, at runtime, where IO happens through for load/save
+enum {
+	kSelectSerial = 0,
+	kSelectEEProm,
+	kSelectFile
+};
+static unsigned char loadFrom = kSelectSerial;
+static unsigned char saveTo = kSelectSerial;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,7 +213,7 @@ static unsigned char *tempsp;
 
 /***********************************************************/
 // Keyword table and constants - the last character has 0x80 added to it
-static unsigned char keywords[] = {
+static unsigned char keywords[] PROGMEM = {
 	'L','I','S','T'+0x80,
 	'L','O','A','D'+0x80,
 	'N','E','W'+0x80,
@@ -228,7 +238,6 @@ static unsigned char keywords[] = {
         '\''+ 0x80,
         'A','W','R','I','T','E'+0x80,
         'D','W','R','I','T','E'+0x80,
-        'P','I','N','M','O','D','E'+0x80,
         'D','E','L','A','Y'+0x80,
         'E','N','D'+0x80,
         'R','S','E','E','D'+0x80,
@@ -236,6 +245,10 @@ static unsigned char keywords[] = {
         'T','O','N','E','W'+0x80,
         'T','O','N','E'+0x80,
         'N','O','T','O','N','E'+0x80, 
+        'E','N','E','W'+0x80,
+	'E','S','A','V','E'+0x80,
+	'E','L','O','A','D'+0x80,
+	'E','L','I','S','T'+0x80,
         0
 };
 
@@ -254,12 +267,13 @@ enum {
   KW_FILES,
   KW_MEM,
   KW_QMARK, KW_QUOTE,
-  KW_AWRITE, KW_DWRITE, KW_PINMODE,
+  KW_AWRITE, KW_DWRITE,
   KW_DELAY,
   KW_END,
   KW_RSEED,
   KW_CHAIN,
   KW_TONEW, KW_TONE, KW_NOTONE,
+  KW_ENEW, KW_ESAVE, KW_ELOAD, KW_ELIST,
   KW_DEFAULT /* always the final one*/
 };
 
@@ -278,7 +292,7 @@ struct stack_gosub_frame {
 	unsigned char *txtpos;
 };
 
-static unsigned char func_tab[] = {
+static unsigned char func_tab[] PROGMEM = {
 	'P','E','E','K'+0x80,
 	'A','B','S'+0x80,
         'A','R','E','A','D'+0x80,
@@ -293,17 +307,17 @@ static unsigned char func_tab[] = {
 #define FUNC_RND     4
 #define FUNC_UNKNOWN 5
 
-static unsigned char to_tab[] = {
+static unsigned char to_tab[] PROGMEM = {
 	'T','O'+0x80,
 	0
 };
 
-static unsigned char step_tab[] = {
+static unsigned char step_tab[] PROGMEM = {
 	'S','T','E','P'+0x80,
 	0
 };
 
-static unsigned char relop_tab[] = {
+static unsigned char relop_tab[] PROGMEM = {
 	'>','='+0x80,
 	'<','>'+0x80,
 	'>'+0x80,
@@ -323,7 +337,7 @@ static unsigned char relop_tab[] = {
 #define RELOP_NE_BANG		6
 #define RELOP_UNKNOWN	7
 
-static unsigned char highlow_tab[] = { 
+static unsigned char highlow_tab[] PROGMEM = { 
   'H','I','G','H'+0x80,
   'H','I'+0x80,
   'L','O','W'+0x80,
@@ -332,20 +346,6 @@ static unsigned char highlow_tab[] = {
 };
 #define HIGHLOW_HIGH    1
 #define HIGHLOW_UNKNOWN 4
-
-#ifndef kAutoConf
-static unsigned char inputoutput_tab[] = {
-  'I','N','P','U','T'+0x80,
-  'I','N'+0x80,
-  'I'+0x80,
-  'O','U','T','P','U','T'+0x80,
-  'O','U','T'+0x80,
-  'O'+0x80,
-  0
-};
-#define INPUTOUTPUT_IN  2
-#define INPUTOUTPUT_UNKNOWN 6
-#endif
 
 #define STACK_SIZE (sizeof(struct stack_for_frame)*5)
 #define VAR_SIZE sizeof(short int) // Size of variables in bytes
@@ -362,21 +362,24 @@ static unsigned char *sp;
 static unsigned char table_index;
 static LINENUM linenum;
 
-static const unsigned char okmsg[]            = "OK";
-static const unsigned char whatmsg[]          = "What? ";
-static const unsigned char howmsg[]           =	"How?";
-static const unsigned char sorrymsg[]         = "Sorry!";
-static const unsigned char initmsg[]          = "TinyBasic Plus " kVersion;
-static const unsigned char memorymsg[]        = " bytes free.";
-static const unsigned char breakmsg[]         = "break!";
-static const unsigned char unimplimentedmsg[] = "Unimplemented";
-static const unsigned char backspacemsg[]     = "\b \b";
-static const unsigned char indentmsg[]        = "    ";
-static const unsigned char sderrormsg[]       = "SD card error.";
-static const unsigned char sdfilemsg[]        = "SD file error.";
-static const unsigned char dirextmsg[]        = "(dir)";
-static const unsigned char slashmsg[]         = "/";
-static const unsigned char spacemsg[]         = " ";
+static const unsigned char okmsg[]            PROGMEM = "OK";
+static const unsigned char whatmsg[]          PROGMEM = "What? ";
+static const unsigned char howmsg[]           PROGMEM =	"How?";
+static const unsigned char sorrymsg[]         PROGMEM = "Sorry!";
+static const unsigned char initmsg[]          PROGMEM = "TinyBasic Plus " kVersion;
+static const unsigned char memorymsg[]        PROGMEM = " bytes free.";
+#ifdef ENABLE_EEPROM
+static const unsigned char eeprommsg[]        PROGMEM = " EEProm bytes total.";
+#endif
+static const unsigned char breakmsg[]         PROGMEM = "break!";
+static const unsigned char unimplimentedmsg[] PROGMEM = "Unimplemented";
+static const unsigned char backspacemsg[]     PROGMEM = "\b \b";
+static const unsigned char indentmsg[]        PROGMEM = "    ";
+static const unsigned char sderrormsg[]       PROGMEM = "SD card error.";
+static const unsigned char sdfilemsg[]        PROGMEM = "SD file error.";
+static const unsigned char dirextmsg[]        PROGMEM = "(dir)";
+static const unsigned char slashmsg[]         PROGMEM = "/";
+static const unsigned char spacemsg[]         PROGMEM = " ";
  
 static int inchar(void);
 static void outchar(unsigned char c);
@@ -399,11 +402,11 @@ static void scantable(unsigned char *table)
 	while(1)
 	{
 		// Run out of table entries?
-		if(table[0] == 0)
+		if(pgm_read_byte( table ) == 0)
             return;
 
 		// Do we match this character?
-		if(txtpos[i] == table[0])
+		if(txtpos[i] == pgm_read_byte( table ))
 		{
 			i++;
 			table++;
@@ -411,7 +414,7 @@ static void scantable(unsigned char *table)
 		else
 		{
 			// do we match the last character of keywork (with 0x80 added)? If so, return
-			if(txtpos[i]+0x80 == table[0])
+			if(txtpos[i]+0x80 == pgm_read_byte( table ))
 			{
 				txtpos += i+1;  // Advance the pointer to following the keyword
 				ignore_blanks();
@@ -419,7 +422,7 @@ static void scantable(unsigned char *table)
 			}
 
 			// Forward to the end of this keyword
-			while((table[0] & 0x80) == 0)
+			while((pgm_read_byte( table ) & 0x80) == 0)
 				table++;
 
 			// Now move on to the first character of the next word, and reset the position index
@@ -511,16 +514,6 @@ static unsigned short testnum(void)
 }
 
 /***************************************************************************/
-void printmsgNoNL(const unsigned char *msg)
-{
-	while(*msg)
-	{
-		outchar(*msg);
-		msg++;
-	}
-}
-
-/***************************************************************************/
 static unsigned char print_quoted_string(void)
 {
 	int i=0;
@@ -548,11 +541,20 @@ static unsigned char print_quoted_string(void)
 	return 1;
 }
 
+
+/***************************************************************************/
+void printmsgNoNL(const unsigned char *msg)
+{
+  while( pgm_read_byte( msg ) != 0 ) {
+    outchar( pgm_read_byte( msg++ ) );
+  };
+}
+
 /***************************************************************************/
 void printmsg(const unsigned char *msg)
 {
-	printmsgNoNL(msg);
-    line_terminator();
+  printmsgNoNL(msg);
+  line_terminator();
 }
 
 /***************************************************************************/
@@ -567,7 +569,7 @@ static void getln(char prompt)
 		switch(c)
 		{
 			case NL:
-				break;
+				//break;
 			case CR:
                                 line_terminator();
 				// Terminate all strings with a NL
@@ -716,14 +718,10 @@ static short int expr4(void)
 				return a;
 
                         case FUNC_AREAD:
-#ifdef kAutoConf
                                 pinMode( a, INPUT );
-#endif
                                 return analogRead( a );                        
                         case FUNC_DREAD:
-#ifdef kAutoConf
                                 pinMode( a, INPUT );
-#endif
                                 return digitalRead( a );
                                 
                         case FUNC_RND:
@@ -873,8 +871,15 @@ void loop()
 	stack_limit = program+sizeof(program)-STACK_SIZE;
 	variables_begin = stack_limit - 27*VAR_SIZE;
 	printmsg(initmsg);
+
+        // memory free
 	printnum(variables_begin-program_end);
 	printmsg(memorymsg);
+#ifdef ENABLE_EEPROM
+        // eprom size
+        printnum( E2END );
+        printmsg( eeprommsg );
+#endif
 
 warmstart:
 	// this signifies that it is running in 'direct' mode.
@@ -1132,8 +1137,6 @@ interperateAtTxtpos:
 			// Leave the basic interperater
 			return;
 
-                case KW_PINMODE:  // PINMODE <pin>, INPUT/OUTPUT
-                        goto pinmode;
                 case KW_AWRITE:  // AWRITE <pin>, HIGH|LOW
                         isDigital = false;
                         goto awrite;
@@ -1150,6 +1153,16 @@ interperateAtTxtpos:
                         goto tonegen;
                 case KW_NOTONE:
                         goto tonestop;
+                        
+                case KW_ENEW:
+                case KW_ESAVE:
+                case KW_ELOAD:
+                case KW_ELIST:
+#ifdef ENABLE_EEPROM
+                        goto execnextline;
+#else
+                        goto unimplemented;
+#endif
                         
 		case KW_DEFAULT:
 			goto assignment;
@@ -1450,50 +1463,20 @@ print:
 	goto run_next_statement;
 
 mem:
+        // memory free
 	printnum(variables_begin-program_end);
 	printmsg(memorymsg);
+#ifdef ENABLE_EEPROM
+        // eprom size
+        printnum( E2END );
+        printmsg( eeprommsg );
+#endif
         goto run_next_statement;
         
         
 /*************************************************/
 
 #if ARDUINO
-pinmode: // PINMODE <pin>, I/O
-#ifdef kAutoConf
-        goto unimplemented;
-#else
-        {
-		short int pinNo;
-
-		// Get the pin number
-		expression_error = 0;
-		pinNo = expression();
-		if(expression_error)
-			goto qwhat;
-
-		// check for a comma
-		ignore_blanks();
-		if (*txtpos != ',')
-			goto qwhat;
-		txtpos++;
-		ignore_blanks();
-
-                // look for the keyword for Input/Output
-		scantable(inputoutput_tab);
-		if(table_index == INPUTOUTPUT_UNKNOWN)
-			goto qwhat;
-
-                if( table_index <= INPUTOUTPUT_IN )
-                {
-                  pinMode( pinNo, INPUT );
-                } else {
-                  pinMode( pinNo, OUTPUT );
-                }
-        }
-        goto run_next_statement;
-#endif
-
-        
 awrite: // AWRITE <pin>,val
 dwrite:
         {
@@ -1532,9 +1515,7 @@ dwrite:
   		  if(expression_error)
   			goto qwhat;
                 }
-#ifdef kAutoConf
                 pinMode( pinNo, OUTPUT );
-#endif
                 if( isDigital ) {
                   digitalWrite( pinNo, value );
                 } else {
@@ -1781,12 +1762,7 @@ void setup()
 
 #endif /* ENABLE_FILEIO */
 
-#if ENABLE_SECOND_SERIAL
-  ssSerial.begin(9600);
-#endif /* ENABLE_SECOND_SERIAL */
 #endif /* ARDUINO */
-
-
 }
 
 
@@ -1796,10 +1772,6 @@ static unsigned char breakcheck(void)
 #if ARDUINO
   if(Serial.available())
     return Serial.read() == CTRLC;
-#if ENABLE_SECOND_SERIAL
-  if(ssSerial.available())
-    return ssSerial.read() == CTRLC;
-#endif
   return 0;
 #else
 #ifdef __CONIO__
@@ -1838,12 +1810,6 @@ static int inchar()
     {
       if(Serial.available())
         return Serial.read();
-        
-#if ENABLE_SECOND_SERIAL
-      if(ssSerial.available())
-        return ssSerial.read();
-#endif
-
     }
 #if ENABLE_FILEIO
   }
@@ -1869,10 +1835,9 @@ static void outchar(unsigned char c)
   if( outToFile ) {
     // output to a file
     fp.write( c );
-  } else {
-    Serial.write(c);
-  }
+  } else
 #endif
+    Serial.write(c);
 
 #else
 	putchar(c);
@@ -1913,8 +1878,7 @@ static int initSD( void )
 }
 #endif
 
-#if ARDUINO
-
+#if ARDUINO && ENABLE_FILEIO
 void cmd_Files( void )
 {
     File dir = SD.open( "/" );
