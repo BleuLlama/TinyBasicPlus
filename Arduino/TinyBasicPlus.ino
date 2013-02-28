@@ -144,6 +144,8 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 #else
   // Not arduino setup
   #include <stdio.h>
+  #include <stdlib.h>
+  #undef ENABLE_TONES
 
   // size of our program ram
   #define kRamSize   4096
@@ -717,15 +719,21 @@ static short int expr4(void)
 					return -a;
 				return a;
 
+#ifdef ARDUINO
                         case FUNC_AREAD:
                                 pinMode( a, INPUT );
                                 return analogRead( a );                        
                         case FUNC_DREAD:
                                 pinMode( a, INPUT );
                                 return digitalRead( a );
+#endif
                                 
                         case FUNC_RND:
+#ifdef ARDUINO
                                 return( random( a ));
+#else
+				return( rand() % a );
+#endif
 		}
 	}
 
@@ -861,8 +869,10 @@ void loop()
         boolean alsoWait = false;
         int val;
 
+#ifdef ARDUINO
 #if ENABLE_TONES
         noTone( kPiezoPin );
+#endif
 #endif
 
 	program_start = program;
@@ -1531,7 +1541,6 @@ dwrite:
 #endif
 
 /*************************************************/
-
 files:
         // display a listing of files on the device.
         // version 1: no support for subdirectories
@@ -1541,7 +1550,7 @@ files:
 	goto warmstart;
 #else
 	goto unimplemented;
-#endif
+#endif // ENABLE_FILEIO
 
 
 chain:
@@ -1572,17 +1581,17 @@ load:
             fp = SD.open( (const char *)filename );
             inFromFile = true;
             inhibitOutput = true;
-#else
-	  // Desktop specific
-#endif
-            // this will kickstart a series of events to read in from the file.
           }
+#else // ARDUINO
+	  // Desktop specific
+#endif // ARDUINO
+            // this will kickstart a series of events to read in from the file.
           
         }
         goto warmstart;
-#else
+#else // ENABLE_FILEIO
         goto unimplemented;
-#endif
+#endif // ENABLE_FILEIO
 
 
         
@@ -1616,15 +1625,16 @@ save:
           // go back to standard output, close the file
           outToFile = false;
           fp.close();
-#else
+#else // ARDUINO
 	// desktop
-#endif
+#endif // ARDUINO
 
           goto warmstart;
        }
-#else
+#else // ENABLE_FILEIO
         goto unimplemented;
-#endif
+#endif // ENABLE_FILEIO
+
 rseed:
       {
         short int value;
@@ -1635,7 +1645,11 @@ rseed:
         if(expression_error)
           goto qwhat;
 
+#if ARDUINO
         randomSeed( value );
+#else // ARDUINO
+	srand( value );
+#endif // ARDUINO
         goto run_next_statement;
       }
 
@@ -1704,7 +1718,7 @@ static int isValidFnChar( char c )
   return 0;
 }
 
-static unsigned char * filenameWord(void)
+unsigned char * filenameWord(void)
 {
   // SDL - I wasn't sure if this functionality existed above, so I figured i'd put it here
   unsigned char * ret = txtpos;
