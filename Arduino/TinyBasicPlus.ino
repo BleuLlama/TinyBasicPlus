@@ -251,6 +251,7 @@ static unsigned char keywords[] PROGMEM = {
 	'E','S','A','V','E'+0x80,
 	'E','L','O','A','D'+0x80,
 	'E','L','I','S','T'+0x80,
+	'E','C','H','A','I','N'+0x80,
         0
 };
 
@@ -275,7 +276,7 @@ enum {
   KW_RSEED,
   KW_CHAIN,
   KW_TONEW, KW_TONE, KW_NOTONE,
-  KW_ENEW, KW_ESAVE, KW_ELOAD, KW_ELIST,
+  KW_ENEW, KW_ESAVE, KW_ELOAD, KW_ELIST, KW_ECHAIN,
   KW_DEFAULT /* always the final one*/
 };
 
@@ -1168,6 +1169,7 @@ interperateAtTxtpos:
                 case KW_ESAVE:
                 case KW_ELOAD:
                 case KW_ELIST:
+                case KW_ECHAIN:
 #ifdef ENABLE_EEPROM
                         goto execnextline;
 #else
