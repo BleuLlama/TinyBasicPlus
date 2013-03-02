@@ -15,25 +15,34 @@ command line makefiles.
 
 Features added include support for fileio (SD Library), autorunning
 a program from the SD card, smaller footprint (PROGMEM), support
-for pin data IO, and future support for PS2 input devices and LCD
-output devices.
+for pin data IO, and support for the on-chip EEProm storage for your
+program. 
 
 # Full list of supported statements and functions
 
-## Files, System
+## System
 - BYE		- *exits Basic, soft reboot on Arduino*
-- CHAIN filename.bas - *equivalent of: new, load filename.bas, run*
 - END 		- *stops execution from the program, also "STOP"*
-- FILES		- 	*lists the files on the SD card*
-- LOAD filename.bas	- *loads a file from the SD card*
 - MEM		- *displays memory usage statistics*
 - NEW		- *clears the current program*
 - RUN		- *executes the current program*
+
+## File IO/SD Card
+- FILES		- 	*lists the files on the SD card*
+- LOAD filename.bas	- *loads a file from the SD card*
+- CHAIN filename.bas - *equivalent of: new, load filename.bas, run*
 - SAVE filename.bas	- *saves the current program to the SD card, overwriting*
 
+## EEProm - nonvolatile on-chip storage
+- EFORMAT	- clears the EEProm memory
+- ELOAD		- load the program in from EEProm
+- ESAVE		- save the current program to the EEProm
+- ELIST		- print out the contents of EEProm
+- ECHAIN	- load the program from EEProm and run it
+
 ## IO, Documentation
-- PEEK( address )	- *set a value in memory*
-- POKE			- *get a value in memory*
+- PEEK( address )	- *set a value in memory* (unimplemented)
+- POKE			- *get a value in memory* (unimplemented)
 - PRINT expression	- *print out the expression, also "?"*
 - REM stuff		- *remark/comment, also "'"*
 
@@ -56,16 +65,19 @@ output devices.
 
 ## Pin IO 
 - DELAY	timems*- wait (in milliseconds)*
-- PINMODE pin,mode - *set pin as input or output (INPUT,IN,I,1,OUTPUT,OUT,O,0)*
 - DWRITE pin,value - *set pin with a value (HIGH,HI,LOW,LO)*
 - AWRITE pin,value - *set pin with analog value (pwm) 0..255*
 - DREAD( pin ) - *get the value of the pin* 
 - AREAD( analogPin ) - *get the value of the analog pin*
 
+NOTE: "PINMODE" command removed as of version 0.11
+
 ## Sound - Piezo wired with red/+ on pin 5 and black/- to ground
 - TONE freq,timems - play "freq" for "timems" milleseconds (1000 = 1 second)
 - TONEW freq,timems - same as above, but also waits for it to finish
 - NOTONE - stop playback of all playing tones
+
+NOTE: TONE commands are by default disabled
 
 # Example programs
 
@@ -111,15 +123,15 @@ hook up a potentiometeter between analog 2 and ground, led from digital 3 and gr
 
 # Device Support
 ## Current
-- Arduino - ATMega 168 (~300 bytes available)
-- Arduino - ATMega 368 (~1300 bytes available)
-- SD cards (via SD Library, for FILES, LOAD, SAVE commands, uses 9k of rom)
+- Arduino - ATMega 168 (~100 bytes available)
+- Arduino - ATMega 368 (~1100 bytes available)
+- SD cards (via SD Library, for FILES, LOAD, SAVE commands, uses 9k of ROM)
+- EEProm (via EEProm Library, uses 500 bytes of ROM)
 - Serial IO - command console
 
 ## Future
-- PS2 Keyboard for standalone use
-- LCD Panel for standalone use
-- Graphics LCD support
+- PS2 Keyboard for standalone use (maybe)
+- Graphics support via common function names and ANSI/ReGIS escape codes
 
 
 # Known Quirks and Limitations
@@ -140,7 +152,7 @@ hook up a potentiometeter between analog 2 and ground, led from digital 3 and gr
 
 # MIT License
 
-Copyright (c) 2012
+Copyright (c) 2012-2013
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
