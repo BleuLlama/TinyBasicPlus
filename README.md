@@ -79,6 +79,7 @@ NOTE: "PINMODE" command removed as of version 0.11
 
 NOTE: TONE commands are by default disabled
 
+
 # Example programs
 
 Here are a few example programs to get you started...
@@ -120,6 +121,39 @@ hook up a potentiometeter between analog 2 and ground, led from digital 3 and gr
 	50 IF A == 0 GOTO 100
 	60 GOTO 10
 	100 PRINT "Done."
+
+## ECHAIN example
+
+Write a small program, store it in EEPROM.  We'll show that variables don't
+get erased when chaining happens
+
+	EFORMAT
+	10 A = A + 2
+	20 PRINT A
+	30 PRINT "From eeprom!"
+	40 IF A = 12 GOTO 100
+	50 PRINT "Shouldn't be here."
+	60 END
+	100 PRINT "Hi!"
+
+Then store it in EEProm
+
+	ESAVE
+
+Now, create a new program in main memory and run it
+
+	NEW
+	10 A = 10
+	20 PRINT A
+	30 PRINT "From RAM!"
+	40 ECHAIN
+
+List both, and run
+
+	ELIST
+	LIST
+	RUN
+	
 
 # Device Support
 ## Current
