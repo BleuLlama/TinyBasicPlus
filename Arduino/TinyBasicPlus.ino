@@ -229,7 +229,6 @@ static unsigned char *tempsp;
 /***********************************************************/
 // Keyword table and constants - the last character has 0x80 added to it
 static unsigned char keywords[] PROGMEM = {
-<<<<<<< HEAD
   'L','I','S','T'+0x80,
   'L','O','A','D'+0x80,
   'N','E','W'+0x80,
@@ -271,45 +270,6 @@ static unsigned char keywords[] PROGMEM = {
   'E','S','A','V','E'+0x80,
 #endif
   0
-=======
-	'L','I','S','T'+0x80,
-	'L','O','A','D'+0x80,
-	'N','E','W'+0x80,
-	'R','U','N'+0x80,
-	'S','A','V','E'+0x80,
-	'N','E','X','T'+0x80,
-	'L','E','T'+0x80,
-	'I','F'+0x80,
-	'G','O','T','O'+0x80,
-	'G','O','S','U','B'+0x80,
-	'R','E','T','U','R','N'+0x80,
-	'R','E','M'+0x80,
-	'F','O','R'+0x80,
-	'I','N','P','U','T'+0x80,
-	'P','R','I','N','T'+0x80,
-	'P','O','K','E'+0x80,
-	'S','T','O','P'+0x80,
-	'B','Y','E'+0x80,
-        'F','I','L','E','S'+0x80,
-        'M','E','M'+0x80,
-        '?'+ 0x80,
-        '\''+ 0x80,
-        'A','W','R','I','T','E'+0x80,
-        'D','W','R','I','T','E'+0x80,
-        'D','E','L','A','Y'+0x80,
-        'E','N','D'+0x80,
-        'R','S','E','E','D'+0x80,
-        'C','H','A','I','N'+0x80,
-        'T','O','N','E','W'+0x80,
-        'T','O','N','E'+0x80,
-        'N','O','T','O','N','E'+0x80, 
-        'E','N','E','W'+0x80,
-	'E','S','A','V','E'+0x80,
-	'E','L','O','A','D'+0x80,
-	'E','L','I','S','T'+0x80,
-	'E','C','H','A','I','N'+0x80,
-        0
->>>>>>> 05b31ffd16bf4b2326020b158ce98b54acdd387a
 };
 
 // by moving the command list to an enum, we can easily remove sections 
@@ -334,14 +294,10 @@ enum {
   KW_CHAIN,
 #ifdef ENABLE_TONES
   KW_TONEW, KW_TONE, KW_NOTONE,
-<<<<<<< HEAD
 #endif
 #ifdef ENABLE_EEPROM
   KW_ECHAIN, KW_ELIST, KW_ELOAD, KW_EFORMAT, KW_ESAVE, 
 #endif
-=======
-  KW_ENEW, KW_ESAVE, KW_ELOAD, KW_ELIST, KW_ECHAIN,
->>>>>>> 05b31ffd16bf4b2326020b158ce98b54acdd387a
   KW_DEFAULT /* always the final one*/
 };
 
@@ -438,6 +394,7 @@ static const unsigned char initmsg[]          PROGMEM = "TinyBasic Plus " kVersi
 static const unsigned char memorymsg[]        PROGMEM = " bytes free.";
 #ifdef ENABLE_EEPROM
 static const unsigned char eeprommsg[]        PROGMEM = " EEProm bytes total.";
+static const unsigned char eepromamsg[]       PROGMEM = " EEProm bytes available.";
 #endif
 static const unsigned char breakmsg[]         PROGMEM = "break!";
 static const unsigned char unimplimentedmsg[] PROGMEM = "Unimplemented";
@@ -781,6 +738,7 @@ static short int expr4(void)
     {
     case FUNC_PEEK:
       return program[a];
+      
     case FUNC_ABS:
       if(a < 0) 
         return -a;
@@ -953,7 +911,7 @@ void loop()
   printmsg(memorymsg);
 #ifdef ENABLE_EEPROM
   // eprom size
-  printnum( E2END );
+  printnum( E2END+1 );
   printmsg( eeprommsg );
 #endif
 
@@ -1142,7 +1100,6 @@ interperateAtTxtpos:
 #else
       goto unimplemented;
 #endif
-<<<<<<< HEAD
     }
 
   case KW_FILES:
@@ -1233,101 +1190,6 @@ interperateAtTxtpos:
     goto tonestop;
 #endif
 
-=======
-                }
-
-                case KW_FILES:
-                        goto files;
-       		case KW_LIST:
-			goto list;
-                case KW_CHAIN:
-                        goto chain;
-		case KW_LOAD:
-			goto load;
-                case KW_MEM:
-                        goto mem;
-              	case KW_NEW:
-			if(txtpos[0] != NL)
-				goto qwhat;
-			program_end = program_start;
-			goto prompt;
-		case KW_RUN:
-			current_line = program_start;
-			goto execline;
-		case KW_SAVE:
-			goto save;
-		case KW_NEXT:
-			goto next;
-		case KW_LET:
-			goto assignment;
-		case KW_IF:
-			short int val;
-			expression_error = 0;
-			val = expression();
-			if(expression_error || *txtpos == NL)
-				goto qhow;
-			if(val != 0)
-				goto interperateAtTxtpos;
-			goto execnextline;
-
-		case KW_GOTO:
-			expression_error = 0;
-			linenum = expression();
-			if(expression_error || *txtpos != NL)
-				goto qhow;
-			current_line = findline();
-			goto execline;
-
-		case KW_GOSUB:
-			goto gosub;
-		case KW_RETURN:
-			goto gosub_return; 
-		case KW_REM:
-                case KW_QUOTE:
-			goto execnextline;	// Ignore line completely
-		case KW_FOR:
-			goto forloop; 
-		case KW_INPUT:
-			goto input; 
-		case KW_PRINT:
-                case KW_QMARK:
-			goto print;
-		case KW_POKE:
-			goto poke;
-		case KW_END:
-		case KW_STOP:
-			// This is the easy way to end - set the current line to the end of program attempt to run it
-			if(txtpos[0] != NL)
-				goto qwhat;
-			current_line = program_end;
-			goto execline;
-		case KW_BYE:
-			// Leave the basic interperater
-			return;
-
-                case KW_AWRITE:  // AWRITE <pin>, HIGH|LOW
-                        isDigital = false;
-                        goto awrite;
-                case KW_DWRITE:  // DWRITE <pin>, HIGH|LOW
-                        isDigital = true;
-                        goto dwrite;
-                        
-                case KW_RSEED:
-                        goto rseed;
-                        
-                case KW_TONEW:
-                        alsoWait = true;
-                case KW_TONE:
-                        goto tonegen;
-                case KW_NOTONE:
-                        goto tonestop;
-                        
-                case KW_ENEW:
-                case KW_ESAVE:
-                case KW_ELOAD:
-                case KW_ELIST:
-                case KW_ECHAIN:
->>>>>>> 05b31ffd16bf4b2326020b158ce98b54acdd387a
 #ifdef ENABLE_EEPROM
   case KW_EFORMAT:
     goto eformat;
@@ -1362,7 +1224,7 @@ execline:
 elist:
   {
     int i;
-    for( i = 0 ; i < E2END ; i++ )
+    for( i = 0 ; i < (E2END +1) ; i++ )
     {
       val = EEPROM.read( i );
 
@@ -1707,9 +1569,21 @@ mem:
   printnum(variables_begin-program_end);
   printmsg(memorymsg);
 #ifdef ENABLE_EEPROM
-  // eprom size
-  printnum( E2END );
-  printmsg( eeprommsg );
+  {
+    // eprom size
+    printnum( E2END+1 );
+    printmsg( eeprommsg );
+    
+    // figure out the memory usage;
+    val = ' ';
+    int i;   
+    for( i=0 ; (i<(E2END+1)) && (val != '\0') ; i++ ) {
+      val = EEPROM.read( i );    
+    }
+    printnum( (E2END +1) - (i-1) );
+    
+    printmsg( eepromamsg );
+  }
 #endif
   goto run_next_statement;
 
