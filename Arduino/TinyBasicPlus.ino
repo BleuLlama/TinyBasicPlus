@@ -262,12 +262,14 @@ static unsigned char keywords[] PROGMEM = {
   'T','O','N','E'+0x80,
   'N','O','T','O','N','E'+0x80,
 #endif
+#ifdef ARDUINO
 #ifdef ENABLE_EEPROM
   'E','C','H','A','I','N'+0x80,
   'E','L','I','S','T'+0x80,
   'E','L','O','A','D'+0x80,
   'E','F','O','R','M','A','T'+0x80,
   'E','S','A','V','E'+0x80,
+#endif
 #endif
   0
 };
@@ -295,8 +297,10 @@ enum {
 #ifdef ENABLE_TONES
   KW_TONEW, KW_TONE, KW_NOTONE,
 #endif
+#ifdef ARDUINO
 #ifdef ENABLE_EEPROM
   KW_ECHAIN, KW_ELIST, KW_ELOAD, KW_EFORMAT, KW_ESAVE, 
+#endif
 #endif
   KW_DEFAULT /* always the final one*/
 };
@@ -392,9 +396,11 @@ static const unsigned char howmsg[]           PROGMEM =	"How?";
 static const unsigned char sorrymsg[]         PROGMEM = "Sorry!";
 static const unsigned char initmsg[]          PROGMEM = "TinyBasic Plus " kVersion;
 static const unsigned char memorymsg[]        PROGMEM = " bytes free.";
+#ifdef ARDUINO
 #ifdef ENABLE_EEPROM
 static const unsigned char eeprommsg[]        PROGMEM = " EEProm bytes total.";
 static const unsigned char eepromamsg[]       PROGMEM = " EEProm bytes available.";
+#endif
 #endif
 static const unsigned char breakmsg[]         PROGMEM = "break!";
 static const unsigned char unimplimentedmsg[] PROGMEM = "Unimplemented";
@@ -909,11 +915,13 @@ void loop()
   // memory free
   printnum(variables_begin-program_end);
   printmsg(memorymsg);
+#ifdef ARDUINO
 #ifdef ENABLE_EEPROM
   // eprom size
   printnum( E2END+1 );
   printmsg( eeprommsg );
-#endif
+#endif /* ENABLE_EEPROM */
+#endif /* ARDUINO */
 
 warmstart:
   // this signifies that it is running in 'direct' mode.
@@ -1190,6 +1198,7 @@ interperateAtTxtpos:
     goto tonestop;
 #endif
 
+#ifdef ARDUINO
 #ifdef ENABLE_EEPROM
   case KW_EFORMAT:
     goto eformat;
@@ -1201,6 +1210,7 @@ interperateAtTxtpos:
     goto elist;
   case KW_ECHAIN:
     goto echain;
+#endif
 #endif
 
   case KW_DEFAULT:
@@ -1220,6 +1230,7 @@ execline:
   txtpos = current_line+sizeof(LINENUM)+sizeof(char);
   goto interperateAtTxtpos;
 
+#ifdef ARDUINO
 #ifdef ENABLE_EEPROM
 elist:
   {
@@ -1283,6 +1294,7 @@ eload:
   inhibitOutput = true;
   goto warmstart;
 #endif /* ENABLE_EEPROM */
+#endif
 
 input:
   {
@@ -1568,6 +1580,7 @@ mem:
   // memory free
   printnum(variables_begin-program_end);
   printmsg(memorymsg);
+#ifdef ARDUINO
 #ifdef ENABLE_EEPROM
   {
     // eprom size
@@ -1584,7 +1597,8 @@ mem:
     
     printmsg( eepromamsg );
   }
-#endif
+#endif /* ENABLE_EEPROM */
+#endif /* ARDUINO */
   goto run_next_statement;
 
 
@@ -1934,12 +1948,16 @@ static int inchar()
      break;
   case( kStreamEEProm ):
 #ifdef ENABLE_EEPROM
+#ifdef ARDUINO
     v = EEPROM.read( eepos++ );
     if( v == '\0' ) {
       goto inchar_loadfinish;
     }
     return v;
+#endif
 #else
+    inStream = kStreamSerial;
+    return NL;
 #endif
      break;
   case( kStreamSerial ):
@@ -1985,12 +2003,14 @@ static void outchar(unsigned char c)
     } 
     else
   #endif
+  #ifdef ARDUINO
   #ifdef ENABLE_EEPROM
     if( outStream == kStreamEEProm ) {
       EEPROM.write( eepos++, c );
     }
     else 
-  #endif
+  #endif /* ENABLE_EEPROM */
+  #endif /* ARDUINO */
     Serial.write(c);
 
 #else
