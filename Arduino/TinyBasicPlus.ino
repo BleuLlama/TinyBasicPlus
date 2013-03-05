@@ -6,8 +6,11 @@
 //	    Scott Lawrence <yorgle@gmail.com>
 //
 
-#define kVersion "v0.12"
+#define kVersion "v0.13"
 
+// v0.13: 2013-03-04
+//      Support for Arduino 1.5 (SPI.h included, additional changes for DUE support)
+//
 // v0.12: 2013-03-01
 //      EEPROM load and save routines added: EFORMAT, ELIST, ELOAD, ESAVE, ECHAIN
 //      added EAUTORUN option (chains to EEProm saved program on startup)
@@ -80,12 +83,10 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 // hack to let makefiles work with this file unchanged
 #ifdef FORCE_DESKTOP 
 #undef ARDUINO
-#define PROGMEM /* just ignore */
-#define pgm_read_byte( A ) *(A)
-
 #else
 #define ARDUINO 1
 #endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Feature option configuration...
@@ -117,7 +118,8 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 // we can use the EEProm to store a program during powerdown.  This is 
 // 1kbyte on the '328, and 512 bytes on the '168.  Enabling this here will
-// allow for this funcitonality to work
+// allow for this funcitonality to work.  Note that this only works on AVR
+// arduino.  Disable it for DUE/other devices.
 #define ENABLE_EEPROM 1
 //#undef ENABLE_EEPROM
 
@@ -127,18 +129,33 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 ////////////////////////////////////////////////////////////////////////////////
 #ifdef ARDUINO
+#ifndef RAMEND
+// okay, this is a hack for now
+// if we're in here, we're a DUE probably (ARM instead of AVR)
+
+#define RAMEND 4096-1
+
+// turn off EEProm
+#undef ENABLE_EEPROM
+#undef ENABLE_TONES
+
+#else
+// we're an AVR!
+
+// we're moving our data strings into progmem
+#include <avr/pgmspace.h>
+#endif
+
 // includes, and settings for Arduino-specific functionality
 #ifdef ENABLE_EEPROM
 #include <EEPROM.h>  /* NOTE: case sensitive */
 int eepos = 0;
 #endif
 
-// we're moving our data strings into progmem
-#include <avr/pgmspace.h>
-
 
 #ifdef ENABLE_FILEIO
 #include <SD.h>
+#include <SPI.h> /* needed as of 1.5 beta */
 
 // Arduino-specific configuration
 // set this to the card select for your SD shield
@@ -150,10 +167,23 @@ int eepos = 0;
 File fp;
 #endif
 
-// size of our program ram
-#define kRamSize  (RAMEND - 1180)
-
+// set up our RAM buffer size for program and user input
+// NOTE: This number will have to change if you include other libraries.
+#ifdef ARDUINO
+#ifdef ENABLE_FILEIO
+#define kRamFileIO (1030) /* approximate */
 #else
+#define kRamFileIO (0)
+#endif
+#ifdef ENABLE_TONES
+#define kRamTones (40)
+#else
+#define kRamTones (0)
+#endif
+#endif /* ARDUINO */
+#define kRamSize  (RAMEND - 1160 - kRamFileIO - kRamTones) 
+
+#ifndef ARDUINO
 // Not arduino setup
 #include <stdio.h>
 #include <stdlib.h>
@@ -164,9 +194,15 @@ File fp;
 
 #ifdef ENABLE_FILEIO
 FILE * fp;
+#endif
+#endif
+
+#ifdef ENABLE_FILEIO
 // functions defined elsehwere
 void cmd_Files( void );
 #endif
+
+////////////////////
 
 #ifndef boolean 
 #define boolean int
@@ -178,6 +214,16 @@ void cmd_Files( void );
 #ifndef byte
 typedef unsigned char byte;
 #endif
+
+// some catches for AVR based text string stuff...
+#ifndef PROGMEM
+#define PROGMEM
+#endif
+#ifndef pgm_read_byte
+#define pgm_read_byte( A ) *(A)
+#endif
+
+////////////////////
 
 #ifdef ENABLE_FILEIO
 unsigned char * filenameWord(void);
@@ -222,6 +268,7 @@ typedef short unsigned LINENUM;
 
 
 static unsigned char program[kRamSize];
+static const char *  sentinel = "HELLO";
 static unsigned char *txtpos,*list_line;
 static unsigned char expression_error;
 static unsigned char *tempsp;
@@ -1876,6 +1923,7 @@ void setup()
   Serial.begin(kConsoleBaud);	// opens serial port
   while( !Serial ); // for Leonardo
   
+  Serial.println( sentinel );
   printmsg(initmsg);
 
 #ifdef ENABLE_FILEIO
@@ -2052,7 +2100,7 @@ static int initSD( void )
 }
 #endif
 
-#if ARDUINO && ENABLE_FILEIO
+#if ENABLE_FILEIO
 void cmd_Files( void )
 {
   File dir = SD.open( "/" );
@@ -2078,7 +2126,7 @@ void cmd_Files( void )
         printmsgNoNL( spacemsg );
       }
       printmsgNoNL( dirextmsg );
-    } 
+    }
     else {
       // file ending
       for( int i=strlen( entry.name()) ; i<17 ; i++ ) {
