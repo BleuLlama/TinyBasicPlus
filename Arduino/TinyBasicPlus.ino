@@ -1318,8 +1318,10 @@ esave:
 
     // copied from "List"
     list_line = findline();
-    while(list_line != program_end)
+    while(list_line != program_end) {
       printline();
+    }
+    outchar('\0');
 
     // go back to standard output, close the file
     outStream = kStreamSerial;
