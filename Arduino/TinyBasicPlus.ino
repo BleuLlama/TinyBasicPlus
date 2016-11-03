@@ -2,12 +2,20 @@
 // TinyBasic Plus
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Authors: Mike Field <hamster@snap.net.nz>
-//	    Scott Lawrence <yorgle@gmail.com>
+// Authors: 
+//          Mike Field <hamster@snap.net.nz>
+//	        Scott Lawrence <yorgle@gmail.com>
+// Contributors:
+//          chiefartificer <chiefartificer@gmail.com>
+
+
+#define kVersion "v0.13.1"
+
+// v0.13.1: 2016-08-10
+//      Support for Arduino 1.6.12
+//      Tested on Arduino UNO (R3) & Arduino MEGA 2560 (R3)
+//      Additional information included on some comments
 //
-
-#define kVersion "v0.13"
-
 // v0.13: 2013-03-04
 //      Support for Arduino 1.5 (SPI.h included, additional changes for DUE support)
 //
@@ -77,7 +85,8 @@
 // IF testing with Visual C, this needs to be the first thing in the file.
 //#include "stdafx.h"
 
-
+//INFO: There is a bug in the toolchain that requieres declaring a variable (any variable) before all the definitions
+//INFO: https://goo.gl/3xmiOz
 char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 // hack to let makefiles work with this file unchanged
@@ -125,6 +134,11 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 // Sometimes, we connect with a slower device as the console.
 // Set your console D0/D1 baud rate here (9600 baud default)
+//INFO: All Arduino boards have at least one serial port (also known as a UART or USART)
+//INFO: It communicates on digital pins 0 (RX) and 1 (TX) as well as with the computer via USB. 
+//INFO: https://www.arduino.cc/en/Reference/Serial
+//INFO: https://www.arduino.cc/en/Serial/Begin
+//INFO: TX and RX are abbreviations for Transmit and Receive, respectively.
 #define kConsoleBaud 9600
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,6 +146,10 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 #ifndef RAMEND
 // okay, this is a hack for now
 // if we're in here, we're a DUE probably (ARM instead of AVR)
+//INFO: The value RAMEND is, of course, specific for the processor type. 
+//INFO: It is defined in the INCLUDE file for the processor type
+//INFO: http://www.avr-asm-tutorial.net/avr_en/beginner/SRAM.html
+//INFO: http://www.avr-tutorials.com/general/avr-microcontroller-stack-operation-and-stack-pointer
 
 #define RAMEND 4096-1
 
@@ -143,26 +161,47 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 // we're an AVR!
 
 // we're moving our data strings into progmem
+//INFO: PROGMEM Store data in flash (program) memory instead of SRAM. 
+//INFO: PROGMEM is part of the pgmspace.h library that is available in the AVR architecture only
+//INFO: https://www.arduino.cc/en/Reference/PROGMEM
+
 #include <avr/pgmspace.h>
 #endif
 
 // includes, and settings for Arduino-specific functionality
 #ifdef ENABLE_EEPROM
 #include <EEPROM.h>  /* NOTE: case sensitive */
-int eepos = 0;
+int eepos = 0; //INFO: This variable store the starting EEPROM position
 #endif
 
-
 #ifdef ENABLE_FILEIO
+
+//INFO: Serial Peripheral Interface (SPI) is a synchronous serial data protocol used by microcontrollers, 
+//INFO: for communicating with one or more peripheral devices.
+//INFO: The SPI library allows you to communicate with SPI devices, with the Arduino as the master device.
+
+//INFO: The communication between the microcontroller and the SD card uses SPI, 
+//INFO: which takes place on digital pins 11, 12, and 13 (on most Arduino boards) or 50, 51, and 52 (Arduino Mega).
+//INFO: Those pins are also available in a consistent physical location on the ICSP 
+//INFO: https://www.arduino.cc/en/Reference/SPI
+//INFO: https://www.arduino.cc/en/Reference/SD
+
 #include <SD.h>
 #include <SPI.h> /* needed as of 1.5 beta */
 
 // Arduino-specific configuration
 // set this to the card select for your SD shield
+//INFO: pin 10 (on most Arduino boards) or pin 53 (on the Mega) is used to select the SD card. 
+//INFO: On the EtherNet Shield I think is pin 4 for selecting the SD Card and PIN 10 for selecting EtherNet
+//INFO: https://www.arduino.cc/en/Main/ArduinoEthernetShield
+
 #define kSD_CS 10
 
 #define kSD_Fail  0
 #define kSD_OK    1
+
+//INFO: The File class allows for reading from and writing to individual files on the SD card.
+//INFO: https://www.arduino.cc/en/Reference/SD
 
 File fp;
 #endif
@@ -181,10 +220,18 @@ File fp;
 #define kRamTones (0)
 #endif
 #endif /* ARDUINO */
+//INFO: kRamSize is the available RAM for BASIC programs. The 1160 is to avoid consuming up all the available RAM.
+
 #define kRamSize  (RAMEND - 1160 - kRamFileIO - kRamTones) 
 
 #ifndef ARDUINO
 // Not arduino setup
+// INFO: The AVR stdio.h declares the standard IO facilities that are implemented in avr-libc. Due to the nature of the underlying hardware, 
+// INFO: only a limited subset of standard IO is implemented. There is no actual file implementation available, so only device IO can be performed. 
+// INFO: Since there's no operating system, the application needs to provide enough details about their devices 
+// INFO: in order to make them usable by the standard IO facilities.
+// INFO: http://www.atmel.com/webdoc/AVRLibcReferenceManual/group__avr__stdio.html
+
 #include <stdio.h>
 #include <stdlib.h>
 #undef ENABLE_TONES
@@ -193,6 +240,10 @@ File fp;
 #define kRamSize   4096 /* arbitrary */
 
 #ifdef ENABLE_FILEIO
+
+// INFO: FILE is an object type that identifies a stream and contains the information needed to control it, 
+// INFO: including a pointer to its buffer, its position indicator and all its state indicators.
+// INFO: http://www.cplusplus.com/reference/cstdio/FILE/
 FILE * fp;
 #endif
 #endif
@@ -275,7 +326,8 @@ static unsigned char *tempsp;
 
 /***********************************************************/
 // Keyword table and constants - the last character has 0x80 added to it
-static unsigned char keywords[] PROGMEM = {
+// INFO: There are only 128 ASCII codes. By adding 128 (0x80) one cand find the last character of a keyword by just checking if it is larger than 128 in decimal.
+static const unsigned char keywords[] PROGMEM = {
   'L','I','S','T'+0x80,
   'L','O','A','D'+0x80,
   'N','E','W'+0x80,
@@ -367,7 +419,7 @@ struct stack_gosub_frame {
   unsigned char *txtpos;
 };
 
-static unsigned char func_tab[] PROGMEM = {
+static const unsigned char func_tab[] PROGMEM = {
   'P','E','E','K'+0x80,
   'A','B','S'+0x80,
   'A','R','E','A','D'+0x80,
@@ -382,17 +434,17 @@ static unsigned char func_tab[] PROGMEM = {
 #define FUNC_RND     4
 #define FUNC_UNKNOWN 5
 
-static unsigned char to_tab[] PROGMEM = {
+static const unsigned char to_tab[] PROGMEM = {
   'T','O'+0x80,
   0
 };
 
-static unsigned char step_tab[] PROGMEM = {
+static const unsigned char step_tab[] PROGMEM = {
   'S','T','E','P'+0x80,
   0
 };
 
-static unsigned char relop_tab[] PROGMEM = {
+static const unsigned char relop_tab[] PROGMEM = {
   '>','='+0x80,
   '<','>'+0x80,
   '>'+0x80,
@@ -412,7 +464,7 @@ static unsigned char relop_tab[] PROGMEM = {
 #define RELOP_NE_BANG		6
 #define RELOP_UNKNOWN	7
 
-static unsigned char highlow_tab[] PROGMEM = { 
+static const unsigned char highlow_tab[] PROGMEM = { 
   'H','I','G','H'+0x80,
   'H','I'+0x80,
   'L','O','W'+0x80,
