@@ -29,11 +29,11 @@ endif
 
 ifeq ($(ARCH),MINGW)
 export EXEEXT := .exe
-3lse
+else
 export EXEEXT := 
 endif
 
-export CXXFLAGS += -DFORCE_DESKTOP
+export CXXFLAGS += -DFORCE_DESKTOP -Wno-int-to-pointer-cast
 
 export CXX := g++
 export CC  := gcc
@@ -65,3 +65,7 @@ clean:
 	@echo removing generated files
 	@-rm -f $(OBJS) $(PROG) TinyBasicPlus.cpp
 .PHONY: clean
+
+test: $(PROG)
+	./$(PROG)
+.PHONY: test

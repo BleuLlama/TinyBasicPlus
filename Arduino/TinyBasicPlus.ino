@@ -88,6 +88,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 // hack to let makefiles work with this file unchanged
 #ifdef FORCE_DESKTOP 
 #undef ARDUINO
+#include "desktop.h"
 #else
 #define ARDUINO 1
 #endif

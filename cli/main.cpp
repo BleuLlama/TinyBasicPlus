@@ -8,6 +8,15 @@
 #include <sys/stat.h>
 #endif
 
+/* these are used in the .ino */
+
+void outchar( char ch )
+{
+    printf( "%c", ch );
+}
+
+
+/* other helpers */
 
 int cmd_Files( void )
 {

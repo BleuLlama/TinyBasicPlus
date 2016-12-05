@@ -11,7 +11,8 @@ TinyBasic Plus is an extension and modification upon the original
 "Tiny Basic" by adding support for a few more devices, configurable
 at build time.  It is designed for use on the Arduino, although
 builds will soon be easily possible for other platforms through
-command line makefiles.
+command line makefiles.  Provided is a makefile that builds for 
+unix-ey type OSes.  It has only been tested for Darwin (OS X).
 
 Features added include support for fileio (SD Library), autorunning
 a program from the SD card, smaller footprint (PROGMEM), support
