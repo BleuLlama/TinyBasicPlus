@@ -42,8 +42,8 @@ program.
 - ECHAIN	- load the program from EEProm and run it
 
 ## IO, Documentation
-- PEEK( address )	- *set a value in memory* (unimplemented)
-- POKE			- *get a value in memory* (unimplemented)
+- PEEK( address )	- *get a value in memory* (unimplemented)
+- POKE address		- *set a value in memory* (unimplemented)
 - PRINT expression	- *print out the expression, also "?"*
 - REM stuff		- *remark/comment, also "'"*
 
