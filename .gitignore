@@ -11,6 +11,10 @@
 *.la
 *.a
 
+# Editor files
+*.swp
+*~
+
 # misc
 cli/TinyBasicPlus.cpp
 cli/tbp
