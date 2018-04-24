@@ -176,9 +176,9 @@ List both, and run
 
 # Authors and Contributors
 
-- Tiny Basic 68k - Gordon Brandly [Project Page](http://members.shaw.ca/gbrandly/68ktinyb.html)
+- Tiny Basic 68k - Gordon Brandly [Project Page (via archive.org)](https://web.archive.org/web/20170306113457/http://members.shaw.ca:80/gbrandly/68ktinyb.html)
 - Arduino Basic / Tiny Basic C - Michael Field [Project Page](http://hamsterworks.co.nz/mediawiki/index.php/Arduino_Basic)
-- Tiny Basic Plus - Scott Lawrence <yorgle@gmail.com> [Github Page](http://github.com/BleuLlama/TinyBasicPlus]
+- Tiny Basic Plus - Scott Lawrence <yorgle@gmail.com> [Github Page](http://github.com/BleuLlama/TinyBasicPlus)
 
 - Jurg Wullschleger - Fix for unary operations and whitespace in expressions
 
