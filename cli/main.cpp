@@ -3,9 +3,11 @@
 #if defined(__MINGW32__ )
 #endif
 
-#ifdef __APPLE__
-#include <dirent.h>
-#include <sys/stat.h>
+#if __APPLE__ || __linux__
+#   include <dirent.h>
+#   include <sys/stat.h>
+#else
+#   error Needs fixing to compile on your system
 #endif
 
 /* these are used in the .ino */
