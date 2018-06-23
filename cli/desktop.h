@@ -7,5 +7,5 @@
  #define false 0
 #endif
 
-#define kRamSize ( 64 * 1024 )
+//#define kRamSize ( 64 * 1024 )
 

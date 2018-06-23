@@ -53,9 +53,9 @@ $(PROG): TinyBasicPlus.o main.o
 	@$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) $(LIBS) -o $@
 
 
-TinyBasicPlus.cpp: ../Arduino/TinyBasicPlus.ino
-	@echo copy $< to $@
-	@cp $< $@
+TinyBasicPlus.cpp: ../TinyBasicPlus/TinyBasicPlus.ino
+	@echo Linking .cpp file to the Arduino .ino source
+	@ln -s $< $@
 
 %.o: %.cpp
 	@echo compile $<
