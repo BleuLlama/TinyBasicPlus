@@ -261,7 +261,11 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 #ifdef ARDUINO
   // Use pgmspace/PROGMEM directive to store strings in progmem to save RAM
-  #include <avr/pgmspace.h>
+  #ifdef AVR
+    #include <avr/pgmspace.h>
+  #else
+    #include <pgmspace.h>
+  #endif
 #else
   #include <stdio.h>
   #include <stdlib.h>
