@@ -59,7 +59,7 @@
 //      Integrating some contributions
 //      Corrected some of the #ifdef nesting atop this page
 //      Licensing issues beginning to be addressed
-
+//
 // v0.14: 2013-11-07
 //      Modified Input command to accept an expression using getn()
 //      Syntax is "input x" where x is any variable
@@ -90,7 +90,7 @@
 //      ref: http://arduino.cc/forum/index.php/topic,124739.0.html
 //      fixed filesize printouts (added printUnum for unsigned numbers)
 //      #defineable baud rate for slow connection throttling
-//e
+//
 // v0.08: 2012-10-02
 //      Tone generation through piezo added (TONE, TONEW, NOTONE)
 //
@@ -151,31 +151,36 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 //#define ENABLE_FILEIO 1
 #undef ENABLE_FILEIO
 
-// this turns on "autorun".  if there's FileIO, and a file "autorun.bas",
-// then it will load it and run it when starting up
+// This turns on "autorun".  If there's FileIO, and a file "autorun.bas",
+// then it will load it and run it when starting up.
 //#define ENABLE_AUTORUN 1
 #undef ENABLE_AUTORUN
 // and this is the file that gets run
 #define kAutorunFilename  "autorun.bas"
 
-// this is the alternate autorun.  Autorun the program in the eeprom.
-// it will load whatever is in the EEProm and run it
-#define ENABLE_EAUTORUN 1
-//#undef ENABLE_EAUTORUN
+// This is the alternate autorun.  Autorun the program in the eeprom.
+// it will load whatever is in the EEProm and run it.
+//#define ENABLE_EAUTORUN 1
+#undef ENABLE_EAUTORUN
 
-// this will enable the "TONE", "NOTONE" command using a piezo
+// This will enable the "TONE", "NOTONE" command using a piezo
 // element on the specified pin.  Wire the red/positive/piezo to the kPiezoPin,
 // and the black/negative/metal disc to ground.
-// it adds 1.5k of usage as well.
+// It adds 1.5k of usage as well.
 //#define ENABLE_TONES 1
 #undef ENABLE_TONES
 #define kPiezoPin 5
 
-// we can use the EEProm to store a program during powerdown.  This is 
+// We can use the EEProm to store a program during powerdown.  This is 
 // 1kbyte on the '328, and 512 bytes on the '168.  Enabling this here will
 // allow for this funcitonality to work.  Note that this only works on AVR
 // arduino.  Disable it for DUE/other devices.
-#define ENABLE_EEPROM 1
+#ifdef AVR
+  #define ENABLE_EEPROM 1
+#else
+  #undef ENABLE_EEPROM
+#endif
+//#define ENABLE_EEPROM 1
 //#undef ENABLE_EEPROM
 
 // Sometimes, we connect with a slower device as the console.
@@ -184,7 +189,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// fixes for RAMEND on some platforms
+// Fixes for RAMEND on some platforms
 #ifndef RAMEND
   // RAMEND is defined for Uno type Arduinos
   #ifdef ARDUINO
@@ -208,14 +213,13 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 #endif
 
 #ifndef ARDUINO
-  // not an arduino, so we can disable these features.
-  // turn off EEProm
+  // Not an arduino, so we can disable these features.
   #undef ENABLE_EEPROM
   #undef ENABLE_TONES
 #endif
 
 
-// includes, and settings for Arduino-specific features
+// Includes and settings for Arduino-specific features.
 #ifdef ARDUINO
 
   // EEPROM
@@ -227,9 +231,9 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
   // SD card File io
   #ifdef ENABLE_FILEIO
     #include <SD.h>
-    #include <SPI.h> /* needed as of 1.5 beta */
+    #include <SPI.h> /* Needed as of 1.5 beta */
 
-    // set this to the card select for your Arduino SD shield
+    // Set this to the card select for your Arduino SD shield
     #define kSD_CS 10
 
     #define kSD_Fail  0
@@ -238,7 +242,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
     File fp;
   #endif
 
-  // set up our RAM buffer size for program and user input
+  // Set up our RAM buffer size for program and user input
   // NOTE: This number will have to change if you include other libraries.
   //       It is also an estimation.  Might require adjustments...
   #ifdef ENABLE_FILEIO
@@ -258,17 +262,21 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 #endif /* ARDUINO Specifics */
 
 
-// set up file includes for things we need, or desktop specific stuff.
+// Set up file includes for things we need, or desktop specific stuff.
 
 #ifdef ARDUINO
   // Use pgmspace/PROGMEM directive to store strings in progmem to save RAM
-  #include <avr/pgmspace.h>
+  #ifdef AVR
+    #include <avr/pgmspace.h>
+  #else
+    #include <pgmspace.h>
+  #endif
 #else
   #include <stdio.h>
   #include <stdlib.h>
   #undef ENABLE_TONES
 
-  // size of our program ram
+  // Size of our program ram
   #define kRamSize   64*1024 /* arbitrary - not dependant on libraries */
 
   #ifdef ENABLE_FILEIO
@@ -278,20 +286,22 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 ////////////////////
 
-// memory alignment
-//  necessary for some esp8266-based devices
+// Memory alignment
+// Necessary for some esp8266-based devices
 #ifdef ALIGN_MEMORY
   // Align memory addess x to an even page
   #define ALIGN_UP(x) ((unsigned char*)(((unsigned int)(x + 1) >> 1) << 1))
   #define ALIGN_DOWN(x) ((unsigned char*)(((unsigned int)x >> 1) << 1))
+  #define ALIGN_DOWN2(x) ((unsigned char*)(((unsigned int)x >> 2) << 2))
 #else
   #define ALIGN_UP(x) x
   #define ALIGN_DOWN(x) x
+  #define ALIGN_DOWN2(x) x
 #endif
 
 
 ////////////////////
-// various other desktop-tweaks and such.
+// Various other desktop-tweaks and such.
 
 #ifndef boolean 
   #define boolean int
@@ -303,7 +313,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
   typedef unsigned char byte;
 #endif
 
-// some catches for AVR based text string stuff...
+// Some catches for AVR based text string stuff...
 #ifndef PROGMEM
   #define PROGMEM
 #endif
@@ -314,19 +324,19 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 ////////////////////
 
 #ifdef ENABLE_FILEIO
-  // functions defined elsehwere
+  // Functions defined elsehwere
   void cmd_Files( void );
   unsigned char * filenameWord(void);
   static boolean sd_is_initialized = false;
 #endif
 
-// some settings based things
+// Some settings based things
 
 boolean inhibitOutput = false;
 static boolean runAfterLoad = false;
 static boolean triggerRun = false;
 
-// these will select, at runtime, where IO happens through for load/save
+// These will select, at runtime, where IO happens through for load/save
 enum {
   kStreamSerial = 0,
   kStreamEEProm,
@@ -413,7 +423,7 @@ const static unsigned char keywords[] PROGMEM = {
   0
 };
 
-// by moving the command list to an enum, we can easily remove sections 
+// By moving the command list to an enum, we can easily remove sections 
 // above and below simultaneously to selectively obliterate functionality.
 enum {
   KW_LIST = 0,
@@ -583,7 +593,7 @@ static void scantable(const unsigned char *table)
     }
     else
     {
-      // do we match the last character of keywork (with 0x80 added)? If so, return
+      // Do we match the last character of keywork (with 0x80 added)? If so, return
       if(txtpos[i]+0x80 == pgm_read_byte( table ))
       {
         txtpos += i+1;  // Advance the pointer to following the keyword
@@ -609,12 +619,21 @@ static void pushb(unsigned char b)
 {
   sp--;
   *sp = b;
+  // If push/pop operations don't happen in pairs, this is required to ensure
+  // that the stack stays aligned.
+//#ifdef ALIGN_MEMORY
+//  sp -= 3; 
+//#endif
 }
 
 /***************************************************************************/
 static unsigned char popb()
 {
   unsigned char b;
+  // As above
+//#ifdef ALIGN_MEMORY
+//  sp += 3;
+//#endif
   b = *sp;
   sp++;
   return b;
@@ -810,7 +829,7 @@ void printline()
   line_num = *((LINENUM *)(list_line));
   list_line += sizeof(LINENUM) + sizeof(char);
 
-  // Output the line */
+  // Output the line
   printnum(line_num);
   outchar(' ');
   while(*list_line != NL)
@@ -830,8 +849,8 @@ void printline()
 /***************************************************************************/
 static short int expr4(void)
 {
-  // fix provided by Jurg Wullschleger wullschleger@gmail.com
-  // fixes whitespace and unary operations
+  // Fix provided by Jurg Wullschleger wullschleger@gmail.com
+  // Fixes whitespace and unary operations
   ignore_blanks();
 
   if( *txtpos == '-' ) {
@@ -937,7 +956,7 @@ static short int expr3(void)
 
   a = expr4();
 
-  ignore_blanks(); // fix for eg:  100 a = a + 1
+  ignore_blanks(); // Fix for e.g.:  100 a = a + 1
 
   while(1)
   {
@@ -1054,15 +1073,17 @@ void loop()
   program_end = program_start;
   sp = program+sizeof(program);  // Needed for printnum
 #ifdef ALIGN_MEMORY
+  // Ensure the stack rests on 32-bit pages for the 32-bit pointers in stack structs
+  sp = ALIGN_DOWN2(sp);
   // Ensure these memory blocks start on even pages
-  stack_limit = ALIGN_DOWN(program+sizeof(program)-STACK_SIZE);
+  stack_limit = ALIGN_DOWN(sp - STACK_SIZE);
   variables_begin = ALIGN_DOWN(stack_limit - 27*VAR_SIZE);
 #else
-  stack_limit = program+sizeof(program)-STACK_SIZE;
+  stack_limit = sp-STACK_SIZE;
   variables_begin = stack_limit - 27*VAR_SIZE;
 #endif
 
-  // memory free
+  // Print the amount of free memory
   printnum(variables_begin-program_end);
   printmsg(memorymsg);
 #ifdef ARDUINO
@@ -1074,9 +1095,12 @@ void loop()
 #endif /* ARDUINO */
 
 warmstart:
-  // this signifies that it is running in 'direct' mode.
+  // This signifies that it is running in 'direct' mode.
   current_line = 0;
   sp = program+sizeof(program);
+#ifdef ALIGN_MEMORY
+  sp = ALIGN_DOWN2(sp);
+#endif
   printmsg(okmsg);
 
 prompt:
@@ -1437,14 +1461,14 @@ esave:
     outStream = kStreamEEProm;
     eepos = 0;
 
-    // copied from "List"
+    // Copied from "List"
     list_line = findline();
     while(list_line != program_end) {
       printline();
     }
     outchar('\0');
 
-    // go back to standard output, close the file
+    // Go back to standard output, close the file
     outStream = kStreamSerial;
     
     goto warmstart;
@@ -1455,10 +1479,10 @@ echain:
   runAfterLoad = true;
 
 eload:
-  // clear the program
+  // Clear the program
   program_end = program_start;
 
-  // load from a file into memory
+  // Load from a file into memory
   eepos = 0;
   inStream = kStreamEEProm;
   inhibitOutput = true;
@@ -1676,7 +1700,7 @@ poke:
       goto qwhat;
     address = (unsigned char *)value;
 
-    // check for a comma
+    // Check for a comma
     ignore_blanks();
     if (*txtpos != ',')
       goto qwhat;
@@ -1759,17 +1783,17 @@ print:
   goto run_next_statement;
 
 mem:
-  // memory free
+  // Print the amount of free memory
   printnum(variables_begin-program_end);
   printmsg(memorymsg);
 #ifdef ARDUINO
 #ifdef ENABLE_EEPROM
   {
-    // eprom size
+    // EEPROM size
     printnum( E2END+1 );
     printmsg( eeprommsg );
     
-    // figure out the memory usage;
+    // Figure out the memory usage;
     val = ' ';
     int i;   
     for( i=0 ; (i<(E2END+1)) && (val != '\0') ; i++ ) {
@@ -1800,7 +1824,7 @@ dwrite:
     if(expression_error)
       goto qwhat;
 
-    // check for a comma
+    // Check for a comma
     ignore_blanks();
     if (*txtpos != ',')
       goto qwhat;
@@ -1845,8 +1869,8 @@ dwrite:
 
   /*************************************************/
 files:
-  // display a listing of files on the device.
-  // version 1: no support for subdirectories
+  // Display a listing of files on the device.
+  // Version 1: no support for subdirectories
 
 #ifdef ENABLE_FILEIO
     cmd_Files();
@@ -1860,10 +1884,10 @@ chain:
   runAfterLoad = true;
 
 load:
-  // clear the program
+  // Clear the program
   program_end = program_start;
 
-  // load from a file into memory
+  // Load from a file into memory
 #ifdef ENABLE_FILEIO
   {
     unsigned char *filename;
@@ -1889,7 +1913,7 @@ load:
 #else // ARDUINO
     // Desktop specific
 #endif // ARDUINO
-    // this will kickstart a series of events to read in from the file.
+    // This will kickstart a series of events to read in from the file.
 
   }
   goto warmstart;
@@ -1900,7 +1924,7 @@ load:
 
 
 save:
-  // save from memory out to a file
+  // Save from memory out to a file
 #ifdef ENABLE_FILEIO
   {
     unsigned char *filename;
@@ -1912,26 +1936,26 @@ save:
       goto qwhat;
 
 #ifdef ARDUINO
-    // remove the old file if it exists
+    // Remove the old file if it exists
     if( SD.exists( (char *)filename )) {
       SD.remove( (char *)filename );
     }
 
-    // open the file, switch over to file output
+    // Open the file, switch over to file output
     fp = SD.open( (const char *)filename, FILE_WRITE );
     outStream = kStreamFile;
 
-    // copied from "List"
+    // Copied from "List"
     list_line = findline();
     while(list_line != program_end)
       printline();
 
-    // go back to standard output, close the file
+    // Go back to standard output, close the file
     outStream = kStreamSerial;
 
     fp.close();
 #else // ARDUINO
-    // desktop
+    // Desktop specific
 #endif // ARDUINO
     goto warmstart;
   }
@@ -1965,11 +1989,11 @@ tonestop:
 tonegen:
   {
     // TONE freq, duration
-    // if either are 0, tones turned off
+    // If either are 0, tones turned off
     short int freq;
     short int duration;
 
-    //Get the frequency
+    // Get the frequency
     expression_error = 0;
     freq = expression();
     if(expression_error)
@@ -1982,7 +2006,7 @@ tonegen:
     ignore_blanks();
 
 
-    //Get the duration
+    // Get the duration
     expression_error = 0;
     duration = expression();
     if(expression_error)
@@ -2001,7 +2025,7 @@ tonegen:
 #endif /* ENABLE_TONES */
 }
 
-// returns 1 if the character is valid in a filename
+// Returns 1 if the character is valid in a filename
 static int isValidFnChar( char c )
 {
   if( c >= '0' && c <= '9' ) return 1; // number
@@ -2021,7 +2045,7 @@ unsigned char * filenameWord(void)
   unsigned char * ret = txtpos;
   expression_error = 0;
 
-  // make sure there are no quotes or spaces, search for valid characters
+  // Make sure there are no quotes or spaces, search for valid characters
   //while(*txtpos == SPACE || *txtpos == TAB || *txtpos == SQUOTE || *txtpos == DQUOTE ) txtpos++;
   while( !isValidFnChar( *txtpos )) txtpos++;
   ret = txtpos;
@@ -2031,12 +2055,12 @@ unsigned char * filenameWord(void)
     return ret;
   }
 
-  // now, find the next nonfnchar
+  // Now, find the next nonfnchar
   txtpos++;
   while( isValidFnChar( *txtpos )) txtpos++;
   if( txtpos != ret ) *txtpos = '\0';
 
-  // set the error code if we've got no string
+  // Set the error code if we've got no string
   if( *ret == '\0' ) {
     expression_error = 1;
   }
@@ -2055,7 +2079,7 @@ static void line_terminator(void)
 void setup()
 {
 #ifdef ARDUINO
-  Serial.begin(kConsoleBaud);	// opens serial port
+  Serial.begin(kConsoleBaud);	// Opens serial port
   while( !Serial ); // for Leonardo
   
   Serial.println( sentinel );
@@ -2078,7 +2102,7 @@ void setup()
 
 #ifdef ENABLE_EEPROM
 #ifdef ENABLE_EAUTORUN
-  // read the first byte of the eeprom. if it's a number, assume it's a program we can load
+  // Read the first byte of the eeprom. if it's a number, assume it's a program we can load
   int val = EEPROM.read(0);
   if( val >= '0' && val <= '9' ) {
     program_end = program_start;
@@ -2120,7 +2144,7 @@ static int inchar()
   case( kStreamFile ):
 #ifdef ENABLE_FILEIO
     v = fp.read();
-    if( v == NL ) v=CR; // file translate
+    if( v == NL ) v=CR; // File translate
     if( !fp.available() ) {
       fp.close();
       goto inchar_loadfinish;
@@ -2160,13 +2184,13 @@ inchar_loadfinish:
     runAfterLoad = false;
     triggerRun = true;
   }
-  return NL; // trigger a prompt.
+  return NL; // Trigger a prompt.
   
 #else
-  // otherwise. desktop!
+  // otherwise desktop!
   int got = getchar();
 
-  // translation for desktop systems
+  // Translation for desktop systems
   if( got == LF ) got = CR;
 
   return got;
@@ -2181,7 +2205,7 @@ static void outchar(unsigned char c)
 #ifdef ARDUINO
   #ifdef ENABLE_FILEIO
     if( outStream == kStreamFile ) {
-      // output to a file
+      // Output to a file
       fp.write( c );
     } 
     else
@@ -2208,22 +2232,22 @@ static void outchar(unsigned char c)
 
 static int initSD( void )
 {
-  // if the card is already initialized, we just go with it.
-  // there is no support (yet?) for hot-swap of SD Cards. if you need to 
+  // If the card is already initialized, we just go with it.
+  // There is no support (yet?) for hot-swap of SD Cards. if you need to 
   // swap, pop the card, reset the arduino.)
 
   if( sd_is_initialized == true ) return kSD_OK;
 
-  // due to the way the SD Library works, pin 10 always needs to be 
+  // Due to the way the SD Library works, pin 10 always needs to be 
   // an output, even when your shield uses another line for CS
   pinMode(10, OUTPUT); // change this to 53 on a mega
 
   if( !SD.begin( kSD_CS )) {
-    // failed
+    // Failed
     printmsg( sderrormsg );
     return kSD_Fail;
   }
-  // success - quietly return 0
+  // Success - quietly return 0
   sd_is_initialized = true;
 
   // and our file redirection flags
@@ -2248,7 +2272,7 @@ void cmd_Files( void )
       break;
     }
 
-    // common header
+    // Common header
     printmsgNoNL( indentmsg );
     printmsgNoNL( (const unsigned char *)entry.name() );
     if( entry.isDirectory() ) {
@@ -2256,14 +2280,14 @@ void cmd_Files( void )
     }
 
     if( entry.isDirectory() ) {
-      // directory ending
+      // Directory ending
       for( int i=strlen( entry.name()) ; i<16 ; i++ ) {
         printmsgNoNL( spacemsg );
       }
       printmsgNoNL( dirextmsg );
     }
     else {
-      // file ending
+      // File ending
       for( int i=strlen( entry.name()) ; i<17 ; i++ ) {
         printmsgNoNL( spacemsg );
       }
