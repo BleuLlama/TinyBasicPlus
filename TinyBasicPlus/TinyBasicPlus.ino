@@ -141,6 +141,11 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 #define RAMEND 4096-1
 
+// Enable memory alignment for certain processers (e.g. some ESP8266-based devices)
+// Uses up to one extra byte per program line of memory
+#define ALIGN_MEMORY 1
+//#undef ALIGN_MEMORY
+
 // turn off EEProm
 #undef ENABLE_EEPROM
 #undef ENABLE_TONES
@@ -207,6 +212,23 @@ FILE * fp;
 // functions defined elsehwere
 void cmd_Files( void );
 #endif
+
+////////////////////
+
+
+#ifdef ALIGN_MEMORY
+
+// Align memory addess x to an even page
+#define ALIGN_UP(x) ((unsigned char*)(((unsigned int)(x + 1) >> 1) << 1))
+#define ALIGN_DOWN(x) ((unsigned char*)(((unsigned int)x >> 1) << 1))
+
+#else
+
+#define ALIGN_UP(x) x
+#define ALIGN_DOWN(x) x
+
+#endif
+
 
 ////////////////////
 
@@ -733,6 +755,11 @@ void printline()
     list_line++;
   }
   list_line++;
+#ifdef ALIGN_MEMORY
+  // Start looking for next line on even page
+  if (ALIGN_UP(list_line) != list_line)
+    list_line++;
+#endif
   line_terminator();
 }
 
@@ -962,8 +989,14 @@ void loop()
   program_start = program;
   program_end = program_start;
   sp = program+sizeof(program);  // Needed for printnum
+#ifdef ALIGN_MEMORY
+  // Ensure these memory blocks start on even pages
+  stack_limit = ALIGN_DOWN(program+sizeof(program)-STACK_SIZE);
+  variables_begin = ALIGN_DOWN(stack_limit - 27*VAR_SIZE);
+#else
   stack_limit = program+sizeof(program)-STACK_SIZE;
   variables_begin = stack_limit - 27*VAR_SIZE;
+#endif
 
   // memory free
   printnum(variables_begin-program_end);
@@ -1031,6 +1064,24 @@ prompt:
 
   // Now we have the number, add the line header.
   txtpos -= 3;
+
+#ifdef ALIGN_MEMORY
+  // Line starts should always be on 16-bit pages
+  if (ALIGN_DOWN(txtpos) != txtpos)
+  {
+    txtpos--;
+    linelen++;
+    // As the start of the line has moved, the data should move as well
+    unsigned char *tomove;
+    tomove = txtpos + 3;
+    while (tomove < txtpos + linelen - 1)
+    {
+      *tomove = *(tomove + 1);
+      tomove++;
+    }
+  }
+#endif
+
   *((unsigned short *)txtpos) = linenum;
   txtpos[sizeof(LINENUM)] = linelen;
 
