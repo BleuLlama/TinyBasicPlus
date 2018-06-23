@@ -175,7 +175,12 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 // 1kbyte on the '328, and 512 bytes on the '168.  Enabling this here will
 // allow for this funcitonality to work.  Note that this only works on AVR
 // arduino.  Disable it for DUE/other devices.
-#define ENABLE_EEPROM 1
+#ifdef AVR
+  #define ENABLE_EEPROM 1
+#else
+  #undef ENABLE_EEPROM
+#endif
+//#define ENABLE_EEPROM 1
 //#undef ENABLE_EEPROM
 
 // Sometimes, we connect with a slower device as the console.
