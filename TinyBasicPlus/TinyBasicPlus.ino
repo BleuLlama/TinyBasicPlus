@@ -292,9 +292,11 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
   // Align memory addess x to an even page
   #define ALIGN_UP(x) ((unsigned char*)(((unsigned int)(x + 1) >> 1) << 1))
   #define ALIGN_DOWN(x) ((unsigned char*)(((unsigned int)x >> 1) << 1))
+  #define ALIGN_DOWN2(x) ((unsigned char*)(((unsigned int)x >> 2) << 2))
 #else
   #define ALIGN_UP(x) x
   #define ALIGN_DOWN(x) x
+  #define ALIGN_DOWN2(x) x
 #endif
 
 
@@ -617,12 +619,21 @@ static void pushb(unsigned char b)
 {
   sp--;
   *sp = b;
+  // If push/pop operations don't happen in pairs, this is required to ensure
+  // that the stack stays aligned.
+//#ifdef ALIGN_MEMORY
+//  sp -= 3; 
+//#endif
 }
 
 /***************************************************************************/
 static unsigned char popb()
 {
   unsigned char b;
+  // As above
+//#ifdef ALIGN_MEMORY
+//  sp += 3;
+//#endif
   b = *sp;
   sp++;
   return b;
@@ -1062,11 +1073,13 @@ void loop()
   program_end = program_start;
   sp = program+sizeof(program);  // Needed for printnum
 #ifdef ALIGN_MEMORY
+  // Ensure the stack rests on 32-bit pages for the 32-bit pointers in stack structs
+  sp = ALIGN_DOWN2(sp);
   // Ensure these memory blocks start on even pages
-  stack_limit = ALIGN_DOWN(program+sizeof(program)-STACK_SIZE);
+  stack_limit = ALIGN_DOWN(sp - STACK_SIZE);
   variables_begin = ALIGN_DOWN(stack_limit - 27*VAR_SIZE);
 #else
-  stack_limit = program+sizeof(program)-STACK_SIZE;
+  stack_limit = sp-STACK_SIZE;
   variables_begin = stack_limit - 27*VAR_SIZE;
 #endif
 
@@ -1085,6 +1098,9 @@ warmstart:
   // This signifies that it is running in 'direct' mode.
   current_line = 0;
   sp = program+sizeof(program);
+#ifdef ALIGN_MEMORY
+  sp = ALIGN_DOWN2(sp);
+#endif
   printmsg(okmsg);
 
 prompt:
