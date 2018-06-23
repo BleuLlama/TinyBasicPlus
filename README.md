@@ -42,6 +42,7 @@ program.
 - ECHAIN	- load the program from EEProm and run it
 
 ## IO, Documentation
+- INPUT variable	- *let the user input an expression (number or variable name*
 - PEEK( address )	- *get a value in memory* (unimplemented)
 - POKE address		- *set a value in memory* (unimplemented)
 - PRINT expression	- *print out the expression, also "?"*
@@ -84,6 +85,19 @@ NOTE: TONE commands are by default disabled
 # Example programs
 
 Here are a few example programs to get you started...
+
+## User Input
+
+Let a user enter a new value for a variable, enter a number like '33' or '42',
+or a varaible like 'b'.
+
+	10 A=0
+	15 B=999
+	20 PRINT "A is ", A
+	30 PRINT "Enter a new value ";
+	40 INPUT A
+	50 PRINT "A is now ", A
+
 
 ## Blink
 
