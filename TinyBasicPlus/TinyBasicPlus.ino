@@ -148,12 +148,12 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 // This enables LOAD, SAVE, FILES commands through the Arduino SD Library
 // it adds 9k of usage as well.
-//#define ENABLE_FILEIO
+//#define ENABLE_FILEIO 1
 #undef ENABLE_FILEIO
 
 // this turns on "autorun".  if there's FileIO, and a file "autorun.bas",
 // then it will load it and run it when starting up
-//#define ENABLE_AUTORUN 1
+//#define ENABLE_AUTORUN 0
 #undef ENABLE_AUTORUN
 // and this is the file that gets run
 #define kAutorunFilename  "autorun.bas"
@@ -167,7 +167,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 // element on the specified pin.  Wire the red/positive/piezo to the kPiezoPin,
 // and the black/negative/metal disc to ground.
 // it adds 1.5k of usage as well.
-//#define ENABLE_TONES 0
+//#define ENABLE_TONES 1
 #undef ENABLE_TONES
 #define kPiezoPin 5
 
