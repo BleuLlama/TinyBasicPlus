@@ -148,7 +148,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 // This enables LOAD, SAVE, FILES commands through the Arduino SD Library
 // it adds 9k of usage as well.
-//#define ENABLE_FILEIO 1
+//#define ENABLE_FILEIO
 #undef ENABLE_FILEIO
 
 // this turns on "autorun".  if there's FileIO, and a file "autorun.bas",
@@ -167,7 +167,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 // element on the specified pin.  Wire the red/positive/piezo to the kPiezoPin,
 // and the black/negative/metal disc to ground.
 // it adds 1.5k of usage as well.
-//#define ENABLE_TONES 1
+//#define ENABLE_TONES 0
 #undef ENABLE_TONES
 #define kPiezoPin 5
 
@@ -2202,6 +2202,36 @@ static void outchar(unsigned char c)
 }
 
 /***********************************************************/
+static void outstring(unsigned char *c)
+{
+  if( inhibitOutput ) return;
+
+#ifdef ARDUINO
+  #ifdef ENABLE_FILEIO
+    if( outStream == kStreamFile ) {
+      // output to a file
+      fp.print( (char *) c );
+    } 
+    else
+  #endif
+  #ifdef ARDUINO
+  #ifdef ENABLE_EEPROM
+    if( outStream == kStreamEEProm ) {
+      for(int i = 0; i < strlen(c); i++) {
+        EEPROM.write( eepos++, c[i] );
+      }
+    }
+    else 
+  #endif /* ENABLE_EEPROM */
+  #endif /* ARDUINO */
+    Serial.print((char *)c);
+
+#else
+  putchar(c);
+#endif
+}
+
+/***********************************************************/
 /* SD Card helpers */
 
 #if ARDUINO && ENABLE_FILEIO
@@ -2250,7 +2280,7 @@ void cmd_Files( void )
 
     // common header
     printmsgNoNL( indentmsg );
-    printmsgNoNL( (const unsigned char *)entry.name() );
+    outstring( (unsigned char *)entry.name() );
     if( entry.isDirectory() ) {
       printmsgNoNL( slashmsg );
     }
