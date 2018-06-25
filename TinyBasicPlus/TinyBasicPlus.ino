@@ -153,7 +153,7 @@ char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 // this turns on "autorun".  if there's FileIO, and a file "autorun.bas",
 // then it will load it and run it when starting up
-//#define ENABLE_AUTORUN 0
+//#define ENABLE_AUTORUN 1
 #undef ENABLE_AUTORUN
 // and this is the file that gets run
 #define kAutorunFilename  "autorun.bas"
