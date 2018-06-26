@@ -2202,36 +2202,6 @@ static void outchar(unsigned char c)
 }
 
 /***********************************************************/
-static void outstring(unsigned char *c)
-{
-  if( inhibitOutput ) return;
-
-#ifdef ARDUINO
-  #ifdef ENABLE_FILEIO
-    if( outStream == kStreamFile ) {
-      // output to a file
-      fp.print( (char *) c );
-    } 
-    else
-  #endif
-  #ifdef ARDUINO
-  #ifdef ENABLE_EEPROM
-    if( outStream == kStreamEEProm ) {
-      for(int i = 0; i < strlen(c); i++) {
-        EEPROM.write( eepos++, c[i] );
-      }
-    }
-    else 
-  #endif /* ENABLE_EEPROM */
-  #endif /* ARDUINO */
-    Serial.print((char *)c);
-
-#else
-  putchar(c);
-#endif
-}
-
-/***********************************************************/
 /* SD Card helpers */
 
 #if ARDUINO && ENABLE_FILEIO
@@ -2280,7 +2250,7 @@ void cmd_Files( void )
 
     // common header
     printmsgNoNL( indentmsg );
-    outstring( (unsigned char *)entry.name() );
+    Serial.print( entry.name() );
     if( entry.isDirectory() ) {
       printmsgNoNL( slashmsg );
     }
