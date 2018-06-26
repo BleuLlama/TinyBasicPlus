@@ -2250,7 +2250,7 @@ void cmd_Files( void )
 
     // common header
     printmsgNoNL( indentmsg );
-    printmsgNoNL( (const unsigned char *)entry.name() );
+    Serial.print( entry.name() );
     if( entry.isDirectory() ) {
       printmsgNoNL( slashmsg );
     }
